@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Visit Tracker — Prime Meats</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0f2040;
+  --navy-mid: #1a3560;
+  --gold: #c8923a;
+  --gold-light: #e8b060;
+  --gold-pale: #fdf5e8;
+  --white: #ffffff;
+  --gray-50: #f8f9fb;
+  --gray-100: #eef0f4;
+  --gray-200: #d8dce6;
+  --gray-400: #9aa0b0;
+  --gray-600: #5a6070;
+  --gray-800: #2a2e38;
+  --success: #1a7a4a;
+  --success-bg: #e6f5ee;
+  --danger: #b03030;
+  --danger-bg: #fceaea;
+  --warning: #8a5a00;
+  --warning-bg: #fef6e0;
+  --info: #1a5fa0;
+  --info-bg: #e6f0fa;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-card: 0 1px 4px rgba(15,32,64,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; max-width: 480px; margin: 0 auto; }
+.app-header { background: var(--navy); color: var(--white); padding: 20px 20px 0; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--gold); }
+.app-header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.app-header h1 { font-size: 18px; font-weight: 600; color: var(--white); }
+.app-header p { font-size: 12px; color: var(--gold-light); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.sync-status { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 10px; border-radius: 20px; white-space: nowrap; cursor: pointer; border: none; transition: all 0.2s; }
+.sync-status.connected { background: rgba(26,122,74,0.25); color: #7ee8a2; }
+.sync-status.disconnected { background: rgba(176,48,48,0.25); color: #f4a0a0; }
+.sync-status.syncing { background: rgba(200,146,58,0.25); color: var(--gold-light); }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.sync-status.connected .sync-dot { background: #7ee8a2; }
+.sync-status.disconnected .sync-dot { background: #f4a0a0; }
+.sync-status.syncing .sync-dot { background: var(--gold-light); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.nav-tabs { display: flex; background: var(--navy-mid); border-top: 1px solid rgba(200,146,58,0.2); }
+.nav-tab { flex: 1; padding: 11px 4px; text-align: center; font-size: 12px; font-weight: 500; color: var(--gray-400); cursor: pointer; border: none; background: none; transition: all 0.2s; letter-spacing: 0.03em; text-transform: uppercase; }
+.nav-tab.active { color: var(--gold-light); border-bottom: 2px solid var(--gold); }
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+.card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
+.card-title { font-size: 14px; font-weight: 600; color: var(--navy); letter-spacing: 0.01em; margin-bottom: 14px; }
+.field-group { margin-bottom: 14px; }
+.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.field-label .required { color: var(--gold); }
+input[type="text"], input[type="date"], input[type="email"], input[type="password"], select, textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--gray-800); background: var(--white); transition: border-color 0.2s; -webkit-appearance: none; appearance: none; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,146,58,0.12); }
+textarea { resize: vertical; min-height: 80px; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6070' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field-group { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; letter-spacing: 0.02em; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--navy); color: var(--white); width: 100%; padding: 14px; font-size: 15px; }
+.btn-gold { background: var(--gold); color: var(--white); }
+.btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--navy); }
+.btn-danger { background: transparent; color: var(--danger); border: 1.5px solid var(--danger); padding: 6px 12px; font-size: 12px; }
+.btn-google { background: var(--white); color: var(--gray-800); border: 1.5px solid var(--gray-200); width: 100%; padding: 13px; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-google:hover { border-color: var(--gold); }
+.visit-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow-card); cursor: pointer; transition: border-color 0.2s; }
+.visit-card:hover { border-color: var(--gold); }
+.visit-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.client-name { font-size: 15px; font-weight: 600; color: var(--navy); }
+.client-code { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold); background: var(--gold-pale); padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+.visit-date { font-size: 12px; color: var(--gray-600); margin-bottom: 4px; }
+.visit-next { font-size: 12px; color: var(--success); font-weight: 500; }
+.visit-notes-preview { font-size: 13px; color: var(--gray-600); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+.badge-lead { background: var(--warning-bg); color: var(--warning); }
+.badge-client { background: var(--success-bg); color: var(--success); }
+.badge-pending { background: var(--info-bg); color: var(--info); }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+.filter-bar input { flex: 1; padding: 9px 14px; font-size: 14px; }
+.filter-bar select { width: auto; padding: 9px 30px 9px 10px; font-size: 13px; }
+.report-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-box { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+.stat-number { font-size: 28px; font-weight: 600; color: var(--navy); font-family: 'DM Mono', monospace; }
+.stat-label { font-size: 11px; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.report-row { background: var(--white); border-bottom: 1px solid var(--gray-100); padding: 10px 0; font-size: 13px; }
+.report-row:last-child { border-bottom: none; }
+.report-row-header { font-weight: 600; color: var(--navy); margin-bottom: 2px; }
+.report-row-detail { color: var(--gray-600); }
+.print-btn-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--gray-400); }
+.empty-state p { font-size: 14px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--navy); color: var(--white); padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; border-left: 3px solid var(--gold); transition: transform 0.3s ease; z-index: 1000; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,32,64,0.55); z-index: 200; align-items: flex-end; }
+.modal-overlay.open { display: flex; }
+.modal-sheet { background: var(--white); border-radius: 20px 20px 0 0; padding: 20px 20px 36px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-handle { width: 36px; height: 4px; background: var(--gray-200); border-radius: 4px; margin: 0 auto 20px; }
+.divider { border: none; border-top: 1px solid var(--gray-100); margin: 14px 0; }
+.info-banner { background: var(--info-bg); border: 1px solid rgba(26,95,160,0.2); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--info); line-height: 1.5; margin-bottom: 14px; }
+.pending-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); display: inline-block; margin-right: 4px; }
+@media print {
+  .app-header, .nav-tabs, .print-btn-row, .btn-danger, .visit-actions, .filter-bar { display: none !important; }
+  body { background: white; max-width: 100%; }
+  .page.active { display: block; padding: 0; }
+  .card, .visit-card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+}
+@media (min-width: 480px) { body { box-shadow: 0 0 40px rgba(0,0,0,0.1); } }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-header-top">
+    <div>
+      <h1>🥩 Visit Tracker</h1>
+      <p>Prime Meats — Sales Field App</p>
+    </div>
+    <button class="sync-status disconnected" id="sync-btn" onclick="handleSyncBtn()">
+      <span class="sync-dot"></span>
+      <span id="sync-label">Sin cuenta</span>
+    </button>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('new', this)">+ Nueva</button>
+    <button class="nav-tab" onclick="showPage('list', this)">Visitas</button>
+    <button class="nav-tab" onclick="showPage('report', this)">Reporte</button>
+    <button class="nav-tab" onclick="showPage('sync', this)">☁️ Nube</button>
+  </div>
+</div>
+
+<!-- PAGE: NUEVA VISITA -->
+<div id="page-new" class="page active">
+  <div id="pending-banner" style="display:none;" class="info-banner">
+    <span class="pending-dot"></span><strong id="pending-count">0</strong> visita(s) pendientes de sincronizar con la nube. Conéctate en la pestaña ☁️ Nube.
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span class="card-title" style="margin-bottom:0;">Registrar Visita</span>
+      <span id="form-date-display" style="font-size:12px;color:var(--gray-400);font-family:'DM Mono',monospace;"></span>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Código cliente</label>
+        <input type="text" id="f-code" placeholder="ej. C-1042">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Tipo</label>
+        <select id="f-type" onchange="checkLead()">
+          <option value="client">Cliente</option>
+          <option value="lead">Lead / Prospecto</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nombre <span class="required">*</span></label>
+      <input type="text" id="f-name" placeholder="Nombre del cliente o prospecto">
+    </div>
+    <div id="lead-field" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Lead / Referencia</label>
+        <input type="text" id="f-lead" placeholder="Contacto, referencia, fuente...">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Dirección</label>
+      <input type="text" id="f-address" placeholder="Dirección completa">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Ciudad</label>
+      <input type="text" id="f-city" placeholder="Ciudad">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Fecha visita <span class="required">*</span></label>
+        <input type="date" id="f-visit-date">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Próxima visita</label>
+        <input type="date" id="f-next-date">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Notas de seguimiento</label>
+      <textarea id="f-notes" placeholder="Pedido, comentarios, acuerdos..."></textarea>
+    </div>
+    <input type="hidden" id="f-edit-id">
+    <button class="btn btn-primary" onclick="saveVisit()">💾 Guardar Visita</button>
+  </div>
+</div>
+
+<!-- PAGE: LISTA -->
+<div id="page-list" class="page">
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="Buscar cliente, ciudad..." oninput="renderList()">
+    <select id="filter-type" onchange="renderList()">
+      <option value="">Todos</option>
+      <option value="client">Clientes</option>
+      <option value="lead">Leads</option>
+    </select>
+  </div>
+  <div id="visits-list"></div>
+</div>
+
+<!-- PAGE: REPORTE -->
+<div id="page-report" class="page">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title">Período del reporte</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Desde</label>
+        <input type="date" id="r-from" onchange="renderReport()">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Hasta</label>
+        <input type="date" id="r-to" onchange="renderReport()">
+      </div>
+    </div>
+    <div class="field-row" style="margin-top:10px;">
+      <button class="btn btn-outline" style="flex:1;padding:9px;" onclick="setRange('day')">Hoy</button>
+      <button class="btn btn-outline" style="flex:1;padding:9px;" onclick="setRange('week')">Semana</button>
+      <button class="btn btn-outline" style="flex:1;padding:9px;" onclick="setRange('month')">Mes</button>
+    </div>
+  </div>
+  <div id="report-stats" class="report-stats"></div>
+  <div class="print-btn-row">
+    <button class="btn btn-gold" style="flex:1;" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="btn btn-outline" style="flex:1;" onclick="exportCSV()">📤 CSV</button>
+  </div>
+  <div class="card" style="padding:0 16px;">
+    <div id="report-list"></div>
+  </div>
+</div>
+
+<!-- PAGE: SYNC / NUBE -->
+<div id="page-sync" class="page">
+
+  <!-- NOT SIGNED IN -->
+  <div id="sync-login-section">
+    <div class="card">
+      <div class="card-title">☁️ Sincronización en la nube</div>
+      <p style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+        Guarda tus visitas en Google Drive para acceder desde cualquier dispositivo. Tus datos se guardan como un archivo JSON privado en tu propio Drive.
+      </p>
+      <div class="info-banner" style="margin-bottom:16px;">
+        📋 <strong>Cómo funciona:</strong> La app crea un archivo <code style="font-family:'DM Mono',monospace;font-size:12px;">pm_visits_data.json</code> en tu Google Drive. Solo tú puedes verlo.
+      </div>
+      <button class="btn btn-google" onclick="signInGoogle()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.4 33.6 29.8 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l6.1-6.1C34.5 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.2-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15 17 19.2 14 24 14c3.1 0 5.8 1.1 8 2.9l6.1-6.1C34.5 6.5 29.6 4 24 4c-7.8 0-14.5 4.5-17.7 10.7z"/><path fill="#FBBC04" d="M24 44c5.6 0 10.4-1.8 14.1-5l-6.5-5.3C29.6 35.4 27 36 24 36c-5.7 0-10.4-3.4-12.3-8.3l-7 5.4C8.2 39.8 15.5 44 24 44z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.7c-.9 2.5-2.7 4.6-5 5.9l6.5 5.3c3.8-3.5 6-8.7 6-14.7 0-1.3-.1-2.7-.2-4z"/></svg>
+        Conectar con Google
+      </button>
+      <p style="font-size:11px;color:var(--gray-400);text-align:center;margin-top:10px;line-height:1.5;">
+        Necesitas pegar tu Google API Client ID abajo para activar la conexión
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">Configuración Google API</div>
+      <p style="font-size:13px;color:var(--gray-600);line-height:1.5;margin-bottom:12px;">
+        Sigue las instrucciones del <strong>SETUP.txt</strong> incluido para obtener tu Client ID gratuito de Google.
+      </p>
+      <div class="field-group">
+        <label class="field-label">Google Client ID</label>
+        <input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" oninput="saveClientId()">
+      </div>
+      <p style="font-size:11px;color:var(--gray-400);margin-top:-8px;">Se guarda automáticamente en este dispositivo.</p>
+    </div>
+
+    <div class="card" style="background:var(--gray-50);">
+      <div class="card-title" style="margin-bottom:8px;">💡 Alternativa inmediata: Backup manual</div>
+      <p style="font-size:13px;color:var(--gray-600);line-height:1.5;margin-bottom:12px;">
+        Sin configurar Google, puedes exportar todos tus datos y guardarlos manualmente en Drive.
+      </p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-gold" style="flex:1;font-size:13px;padding:10px;" onclick="exportBackup()">📤 Exportar todo</button>
+        <button class="btn btn-outline" style="flex:1;font-size:13px;padding:10px;" onclick="document.getElementById('import-file').click()">📥 Importar backup</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackup(event)">
+    </div>
+  </div>
+
+  <!-- SIGNED IN -->
+  <div id="sync-connected-section" style="display:none;">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div id="user-avatar" style="width:44px;height:44px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;"></div>
+        <div>
+          <div id="user-name" style="font-weight:600;color:var(--navy);font-size:15px;"></div>
+          <div id="user-email" style="font-size:12px;color:var(--gray-600);"></div>
+        </div>
+      </div>
+      <div id="last-sync-info" style="font-size:12px;color:var(--gray-400);font-family:'DM Mono',monospace;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:2;" onclick="syncNow()">🔄 Sincronizar ahora</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="signOut()">Salir</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">Estado de datos</div>
+      <div id="sync-data-status"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Google API -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// ── CONFIG ─────────────────────────────────────────────
+const DRIVE_FILE_NAME = 'pm_visits_data.json';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+// ── STATE ──────────────────────────────────────────────
+let visits = JSON.parse(localStorage.getItem('pm_visits') || '[]');
+let googleUser = null;
+let driveFileId = localStorage.getItem('pm_drive_file_id') || null;
+let accessToken = null;
+let pendingSync = JSON.parse(localStorage.getItem('pm_pending_sync') || '[]');
+
+// ── INIT ───────────────────────────────────────────────
+(function init() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-visit-date').value = today;
+  document.getElementById('form-date-display').textContent = formatDate(today);
+  document.getElementById('r-from').value = today;
+  document.getElementById('r-to').value = today;
+
+  const savedClientId = localStorage.getItem('pm_google_client_id') || '';
+  if (savedClientId) document.getElementById('google-client-id').value = savedClientId;
+
+  updatePendingBanner();
+  renderList();
+  renderReport();
+})();
+
+// ── NAVIGATION ─────────────────────────────────────────
+function showPage(name, tabEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (tabEl) tabEl.classList.add('active');
+  if (name === 'list') renderList();
+  if (name === 'report') renderReport();
+}
+
+// ── FORM ───────────────────────────────────────────────
+function checkLead() {
+  document.getElementById('lead-field').style.display =
+    document.getElementById('f-type').value === 'lead' ? 'block' : 'none';
+}
+
+function clearForm() {
+  ['f-code','f-name','f-lead','f-address','f-city','f-notes','f-edit-id'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('f-type').value = 'client';
+  document.getElementById('f-visit-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-next-date').value = '';
+  document.getElementById('lead-field').style.display = 'none';
+}
+
+function saveVisit() {
+  const name = document.getElementById('f-name').value.trim();
+  const visitDate = document.getElementById('f-visit-date').value;
+  if (!name) { showToast('⚠️ El nombre es obligatorio'); return; }
+  if (!visitDate) { showToast('⚠️ La fecha de visita es obligatoria'); return; }
+
+  const editId = document.getElementById('f-edit-id').value;
+  const visit = {
+    id: editId || Date.now().toString(),
+    code: document.getElementById('f-code').value.trim(),
+    name,
+    type: document.getElementById('f-type').value,
+    lead: document.getElementById('f-lead').value.trim(),
+    address: document.getElementById('f-address').value.trim(),
+    city: document.getElementById('f-city').value.trim(),
+    visitDate,
+    nextDate: document.getElementById('f-next-date').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    createdAt: editId ? (visits.find(v => v.id === editId)?.createdAt || Date.now()) : Date.now(),
+    synced: false
+  };
+
+  if (editId) {
+    const idx = visits.findIndex(v => v.id === editId);
+    if (idx >= 0) visits[idx] = visit;
+    pendingSync = pendingSync.filter(id => id !== editId);
+  } else {
+    visits.unshift(visit);
+  }
+  if (!visit.synced) {
+    if (!pendingSync.includes(visit.id)) pendingSync.push(visit.id);
+  }
+
+  save();
+  clearForm();
+  showToast(editId ? '✅ Visita actualizada' : '✅ Visita registrada');
+  updatePendingBanner();
+  setTimeout(() => { document.querySelectorAll('.nav-tab')[1].click(); }, 800);
+}
+
+function save() {
+  localStorage.setItem('pm_visits', JSON.stringify(visits));
+  localStorage.setItem('pm_pending_sync', JSON.stringify(pendingSync));
+}
+
+function updatePendingBanner() {
+  const banner = document.getElementById('pending-banner');
+  const count = visits.filter(v => !v.synced).length;
+  if (count > 0 && !accessToken) {
+    banner.style.display = 'block';
+    document.getElementById('pending-count').textContent = count;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ── LIST ───────────────────────────────────────────────
+function renderList() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const typeFilter = document.getElementById('filter-type').value;
+  let filtered = visits.filter(v => {
+    const matchQ = !q || v.name.toLowerCase().includes(q) || (v.city||'').toLowerCase().includes(q) || (v.code||'').toLowerCase().includes(q);
+    const matchType = !typeFilter || v.type === typeFilter;
+    return matchQ && matchType;
+  });
+  const container = document.getElementById('visits-list');
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><p>No hay visitas registradas</p></div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(v => `
+    <div class="visit-card" onclick="openDetail('${v.id}')">
+      <div class="visit-card-top">
+        <div>
+          <div class="client-name">${v.name}</div>
+          ${v.city ? `<div class="visit-date" style="margin-top:2px;">📍 ${v.city}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          ${v.code ? `<span class="client-code">${v.code}</span>` : ''}
+          <span class="badge badge-${v.type}">${v.type==='lead'?'Lead':'Cliente'}</span>
+          ${!v.synced ? `<span style="font-size:10px;color:var(--warning);">● sin sync</span>` : ''}
+        </div>
+      </div>
+      <div class="visit-date">📅 ${formatDate(v.visitDate)}</div>
+      ${v.nextDate ? `<div class="visit-next">🗓 Próxima: ${formatDate(v.nextDate)}</div>` : ''}
+      ${v.notes ? `<div class="visit-notes-preview">💬 ${v.notes}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────
+function openDetail(id) {
+  const v = visits.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('modal-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div style="font-size:18px;font-weight:600;color:var(--navy);">${v.name}</div>
+        ${v.code ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);margin-top:4px;">${v.code}</div>` : ''}
+      </div>
+      <span class="badge badge-${v.type}">${v.type==='lead'?'Lead':'Cliente'}</span>
+    </div>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      ${v.lead?`<tr><td style="padding:7px 0;color:var(--gray-600);width:40%;">Lead/Ref</td><td style="padding:7px 0;font-weight:500;">${v.lead}</td></tr>`:''}
+      ${v.address?`<tr><td style="padding:7px 0;color:var(--gray-600);">Dirección</td><td style="padding:7px 0;">${v.address}</td></tr>`:''}
+      ${v.city?`<tr><td style="padding:7px 0;color:var(--gray-600);">Ciudad</td><td style="padding:7px 0;">${v.city}</td></tr>`:''}
+      <tr><td style="padding:7px 0;color:var(--gray-600);">Fecha visita</td><td style="padding:7px 0;font-weight:500;">${formatDate(v.visitDate)}</td></tr>
+      ${v.nextDate?`<tr><td style="padding:7px 0;color:var(--gray-600);">Próxima visita</td><td style="padding:7px 0;color:var(--success);font-weight:500;">${formatDate(v.nextDate)}</td></tr>`:''}
+      <tr><td style="padding:7px 0;color:var(--gray-600);">Guardado en nube</td><td style="padding:7px 0;">${v.synced?'✅ Sí':'⏳ Pendiente'}</td></tr>
+    </table>
+    ${v.notes?`<div style="margin-top:14px;padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);border-left:3px solid var(--gold);"><div style="font-size:11px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Notas</div><div style="font-size:14px;color:var(--gray-800);line-height:1.6;">${v.notes}</div></div>`:''}
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button class="btn btn-gold" style="flex:1;" onclick="editVisit('${v.id}')">✏️ Editar</button>
+      <button class="btn btn-danger" onclick="deleteVisit('${v.id}')">🗑</button>
+    </div>
+  `;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('detail-modal'))
+    document.getElementById('detail-modal').classList.remove('open');
+}
+
+function editVisit(id) {
+  const v = visits.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('detail-modal').classList.remove('open');
+  document.getElementById('f-code').value = v.code||'';
+  document.getElementById('f-name').value = v.name;
+  document.getElementById('f-type').value = v.type;
+  document.getElementById('f-lead').value = v.lead||'';
+  document.getElementById('f-address').value = v.address||'';
+  document.getElementById('f-city').value = v.city||'';
+  document.getElementById('f-visit-date').value = v.visitDate;
+  document.getElementById('f-next-date').value = v.nextDate||'';
+  document.getElementById('f-notes').value = v.notes||'';
+  document.getElementById('f-edit-id').value = v.id;
+  checkLead();
+  document.querySelectorAll('.nav-tab')[0].click();
+  window.scrollTo(0,0);
+}
+
+function deleteVisit(id) {
+  if (!confirm('¿Eliminar esta visita?')) return;
+  visits = visits.filter(v => v.id !== id);
+  pendingSync = pendingSync.filter(x => x !== id);
+  save();
+  document.getElementById('detail-modal').classList.remove('open');
+  renderList();
+  showToast('🗑 Visita eliminada');
+  updatePendingBanner();
+}
+
+// ── REPORT ─────────────────────────────────────────────
+function setRange(period) {
+  const today = new Date();
+  let from, to;
+  if (period === 'day') { from = to = today.toISOString().split('T')[0]; }
+  else if (period === 'week') {
+    const day = today.getDay();
+    const mon = new Date(today); mon.setDate(today.getDate()-(day===0?6:day-1));
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    from = mon.toISOString().split('T')[0]; to = sun.toISOString().split('T')[0];
+  } else {
+    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    to = new Date(today.getFullYear(), today.getMonth()+1, 0).toISOString().split('T')[0];
+  }
+  document.getElementById('r-from').value = from;
+  document.getElementById('r-to').value = to;
+  renderReport();
+}
+
+function renderReport() {
+  const from = document.getElementById('r-from').value;
+  const to = document.getElementById('r-to').value;
+  if (!from || !to) return;
+  const filtered = visits.filter(v => v.visitDate >= from && v.visitDate <= to);
+  const leads = filtered.filter(v => v.type==='lead').length;
+  const clients = filtered.filter(v => v.type==='client').length;
+  const withNext = filtered.filter(v => v.nextDate).length;
+  document.getElementById('report-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-number">${filtered.length}</div><div class="stat-label">Total visitas</div></div>
+    <div class="stat-box"><div class="stat-number">${clients}</div><div class="stat-label">Clientes</div></div>
+    <div class="stat-box"><div class="stat-number">${leads}</div><div class="stat-label">Leads</div></div>
+    <div class="stat-box"><div class="stat-number">${withNext}</div><div class="stat-label">Con seguimiento</div></div>
+  `;
+  const sorted = [...filtered].sort((a,b) => b.visitDate.localeCompare(a.visitDate));
+  document.getElementById('report-list').innerHTML = sorted.length ? sorted.map(v => `
+    <div class="report-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="report-row-header">${v.name} ${v.code?`<span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);">(${v.code})</span>`:''}</div>
+        <span class="badge badge-${v.type}">${v.type==='lead'?'Lead':'Cliente'}</span>
+      </div>
+      <div style="color:var(--gray-600);font-size:12px;">${formatDate(v.visitDate)}${v.city?' · '+v.city:''}${v.nextDate?' · Próxima: '+formatDate(v.nextDate):''}</div>
+      ${v.notes?`<div style="font-size:12px;color:var(--gray-600);margin-top:4px;font-style:italic;">${v.notes}</div>`:''}
+    </div>
+  `).join('') : '<div style="padding:24px 0;text-align:center;color:var(--gray-400);font-size:14px;">Sin visitas en este período</div>';
+}
+
+function exportCSV() {
+  const from = document.getElementById('r-from').value;
+  const to = document.getElementById('r-to').value;
+  const filtered = visits.filter(v => v.visitDate >= from && v.visitDate <= to);
+  const header = ['Código','Nombre','Tipo','Lead/Ref','Dirección','Ciudad','Fecha Visita','Próxima Visita','Notas'];
+  const rows = filtered.map(v => [v.code,v.name,v.type==='lead'?'Lead':'Cliente',v.lead,v.address,v.city,v.visitDate,v.nextDate,v.notes].map(f=>`"${(f||'').replace(/"/g,'""')}"`));
+  const csv = [header,...rows].map(r=>r.join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`visitas_${from}_${to}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 CSV exportado');
+}
+
+// ── BACKUP MANUAL ──────────────────────────────────────
+function exportBackup() {
+  const data = JSON.stringify({ visits, exportedAt: new Date().toISOString(), version: 2 }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pm_visits_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 Backup exportado — guárdalo en Drive');
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const imported = data.visits || data;
+      if (!Array.isArray(imported)) throw new Error('Formato inválido');
+      const existing = new Set(visits.map(v => v.id));
+      let added = 0;
+      imported.forEach(v => { if (!existing.has(v.id)) { visits.unshift(v); added++; } });
+      save();
+      renderList();
+      showToast(`✅ ${added} visita(s) importadas`);
+    } catch(err) { showToast('❌ Error al importar el archivo'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ── GOOGLE DRIVE SYNC ──────────────────────────────────
+function saveClientId() {
+  const val = document.getElementById('google-client-id').value.trim();
+  localStorage.setItem('pm_google_client_id', val);
+}
+
+function handleSyncBtn() {
+  document.querySelectorAll('.nav-tab')[3].click();
+  showPage('sync', document.querySelectorAll('.nav-tab')[3]);
+}
+
+function signInGoogle() {
+  const clientId = (document.getElementById('google-client-id').value || localStorage.getItem('pm_google_client_id') || '').trim();
+  if (!clientId || !clientId.includes('apps.googleusercontent.com')) {
+    showToast('⚠️ Primero ingresa tu Google Client ID');
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SCOPES,
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error) { showToast('❌ Error al conectar con Google'); return; }
+      accessToken = tokenResponse.access_token;
+      await fetchUserInfo();
+      await findOrCreateDriveFile();
+      showConnectedUI();
+      syncNow();
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function fetchUserInfo() {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    googleUser = await res.json();
+  } catch(e) { googleUser = { name: 'Usuario', email: '', picture: '' }; }
+}
+
+async function findOrCreateDriveFile() {
+  setSyncStatus('syncing', 'Buscando...');
+  if (driveFileId) {
+    const check = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (check.ok) return;
+    driveFileId = null;
+    localStorage.removeItem('pm_drive_file_id');
+  }
+  const search = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false&spaces=drive`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const result = await search.json();
+  if (result.files && result.files.length > 0) {
+    driveFileId = result.files[0].id;
+    localStorage.setItem('pm_drive_file_id', driveFileId);
+  } else {
+    const meta = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify({ visits: [], version: 2 })], { type: 'application/json' }));
+    const create = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form
+    });
+    const created = await create.json();
+    driveFileId = created.id;
+    localStorage.setItem('pm_drive_file_id', driveFileId);
+  }
+}
+
+async function syncNow() {
+  if (!accessToken) { showToast('⚠️ Conéctate primero a Google'); return; }
+  setSyncStatus('syncing', 'Sincronizando...');
+  try {
+    const dlRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const cloudData = await dlRes.json();
+    const cloudVisits = cloudData.visits || [];
+    const merged = mergeVisits(visits, cloudVisits);
+    visits = merged;
+    visits.forEach(v => { v.synced = true; });
+    pendingSync = [];
+    save();
+    const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visits, syncedAt: new Date().toISOString(), version: 2 })
+    });
+    if (!uploadRes.ok) throw new Error('Upload failed');
+    const now = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    localStorage.setItem('pm_last_sync', now);
+    document.getElementById('last-sync-info').textContent = `Última sincronización: ${now}`;
+    setSyncStatus('connected', 'Conectado');
+    updateSyncDataStatus();
+    updatePendingBanner();
+    renderList();
+    showToast('☁️ Sincronizado con Google Drive');
+  } catch(err) {
+    setSyncStatus('disconnected', 'Error sync');
+    showToast('❌ Error al sincronizar — intenta de nuevo');
+  }
+}
+
+function mergeVisits(local, cloud) {
+  const map = new Map();
+  [...cloud, ...local].forEach(v => {
+    if (!map.has(v.id) || (v.createdAt > (map.get(v.id).createdAt || 0))) {
+      map.set(v.id, v);
+    }
+  });
+  return Array.from(map.values()).sort((a,b) => b.visitDate.localeCompare(a.visitDate));
+}
+
+function showConnectedUI() {
+  document.getElementById('sync-login-section').style.display = 'none';
+  document.getElementById('sync-connected-section').style.display = 'block';
+  document.getElementById('user-name').textContent = googleUser.name || 'Usuario';
+  document.getElementById('user-email').textContent = googleUser.email || '';
+  document.getElementById('user-avatar').textContent = (googleUser.name||'U')[0].toUpperCase();
+  const lastSync = localStorage.getItem('pm_last_sync');
+  document.getElementById('last-sync-info').textContent = lastSync ? `Última sincronización: ${lastSync}` : 'Sin sincronizaciones aún';
+  setSyncStatus('connected', 'Conectado');
+  updateSyncDataStatus();
+}
+
+function updateSyncDataStatus() {
+  const total = visits.length;
+  const synced = visits.filter(v=>v.synced).length;
+  const pending = total - synced;
+  document.getElementById('sync-data-status').innerHTML = `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:14px;">
+      <span style="color:var(--gray-600);">Total visitas</span><strong>${total}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:14px;">
+      <span style="color:var(--gray-600);">Sincronizadas</span><strong style="color:var(--success);">${synced}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;">
+      <span style="color:var(--gray-600);">Pendientes</span><strong style="color:${pending>0?'var(--warning)':'var(--success)'};">${pending}</strong>
+    </div>
+  `;
+}
+
+function signOut() {
+  accessToken = null;
+  googleUser = null;
+  document.getElementById('sync-login-section').style.display = 'block';
+  document.getElementById('sync-connected-section').style.display = 'none';
+  setSyncStatus('disconnected', 'Sin cuenta');
+  updatePendingBanner();
+  showToast('👋 Sesión cerrada');
+}
+
+function setSyncStatus(state, label) {
+  const btn = document.getElementById('sync-btn');
+  btn.className = `sync-status ${state}`;
+  document.getElementById('sync-label').textContent = label;
+}
+
+// ── UTILS ──────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
