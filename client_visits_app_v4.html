@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Visit Tracker — Prime Meats</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --navy:#0f2040;--navy-mid:#1a3560;--navy-light:#243d6a;
+  --gold:#c8923a;--gold-light:#e8b060;--gold-pale:#fdf5e8;
+  --white:#ffffff;--gray-50:#f8f9fb;--gray-100:#eef0f4;--gray-200:#d8dce6;
+  --gray-400:#9aa0b0;--gray-600:#5a6070;--gray-800:#2a2e38;
+  --client:#1d6fca;--client-bg:#e8f0fb;--client-dark:#1550a0;
+  --lead:#c0392b;--lead-bg:#fdecea;--lead-dark:#9b1e1e;
+  --success:#1a7a4a;--success-bg:#e6f5ee;
+  --warning:#8a5a00;--warning-bg:#fef6e0;
+  --info:#1a5fa0;--info-bg:#e6f0fa;
+  --radius:12px;--radius-sm:8px;--shadow-card:0 1px 4px rgba(15,32,64,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* HEADER */
+.app-header{background:var(--navy);color:var(--white);padding:14px 16px 0;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);}
+.app-header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px;}
+.app-header h1{font-size:16px;font-weight:700;color:var(--white);letter-spacing:.01em;}
+.app-header p{font-size:10px;color:var(--gold-light);margin-top:1px;font-family:'DM Mono',monospace;}
+.sync-status{display:flex;align-items:center;gap:5px;font-size:10px;font-family:'DM Mono',monospace;padding:4px 9px;border-radius:20px;white-space:nowrap;cursor:pointer;border:none;transition:all .2s;}
+.sync-status.connected{background:rgba(26,122,74,.25);color:#7ee8a2;}
+.sync-status.disconnected{background:rgba(176,48,48,.25);color:#f4a0a0;}
+.sync-status.syncing{background:rgba(200,146,58,.25);color:var(--gold-light);}
+.sync-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.sync-status.connected .sync-dot{background:#7ee8a2;}
+.sync-status.disconnected .sync-dot{background:#f4a0a0;}
+.sync-status.syncing .sync-dot{background:var(--gold-light);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-tabs{display:flex;background:var(--navy-mid);border-top:1px solid rgba(200,146,58,.2);}
+.nav-tab{flex:1;padding:9px 2px;text-align:center;font-size:10px;font-weight:600;color:var(--gray-400);cursor:pointer;border:none;background:none;transition:all .2s;letter-spacing:.04em;text-transform:uppercase;}
+.nav-tab.active{color:var(--gold-light);border-bottom:2px solid var(--gold);}
+
+/* PAGES */
+.page{display:none;padding:14px;}
+.page.active{display:block;}
+#page-map{display:none;padding:0;flex-direction:column;}
+#page-map.active{display:flex;height:calc(100vh - 108px);}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);padding:14px;margin-bottom:12px;box-shadow:var(--shadow-card);}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:11px;text-transform:uppercase;letter-spacing:.04em;}
+
+/* FORM */
+.field-group{margin-bottom:11px;}
+.field-label{display:block;font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
+.field-label .required{color:var(--gold);}
+input[type="text"],input[type="date"],select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--gray-800);background:var(--white);transition:border-color .2s;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,146,58,.12);}
+textarea{resize:vertical;min-height:70px;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6070' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.field-row{display:flex;gap:10px;}
+.field-row .field-group{flex:1;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:.02em;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--navy);color:var(--white);width:100%;padding:13px;font-size:15px;}
+.btn-gold{background:var(--gold);color:var(--white);}
+.btn-outline{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
+.btn-danger{background:transparent;color:var(--lead);border:1.5px solid var(--lead);padding:6px 11px;font-size:12px;}
+.btn-google{background:var(--white);color:var(--gray-800);border:1.5px solid var(--gray-200);width:100%;padding:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px;}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.04em;}
+.badge-client{background:var(--client-bg);color:var(--client-dark);}
+.badge-lead{background:var(--lead-bg);color:var(--lead-dark);}
+
+/* VISIT CARDS */
+.visit-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);padding:12px 14px;margin-bottom:9px;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s;}
+.visit-card:hover{border-color:var(--gold);box-shadow:0 2px 12px rgba(200,146,58,.15);}
+.visit-card.is-client{border-left:3px solid var(--client);}
+.visit-card.is-lead{border-left:3px solid var(--lead);}
+.client-name{font-size:14px;font-weight:600;color:var(--navy);}
+.client-code{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);background:var(--gold-pale);padding:3px 7px;border-radius:4px;white-space:nowrap;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+.filter-bar input{flex:1;padding:9px 12px;font-size:14px;}
+.filter-bar select{width:auto;padding:9px 28px 9px 10px;font-size:12px;}
+
+/* REPORT */
+.report-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-box{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-sm);padding:12px;text-align:center;}
+.stat-number{font-size:26px;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;}
+.stat-label{font-size:10px;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+
+/* MAP */
+.map-topbar{background:var(--navy);padding:8px 12px;display:flex;gap:6px;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(200,146,58,.3);}
+.map-title-area{flex:1;min-width:0;}
+.map-title{font-size:12px;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.map-subtitle{font-size:10px;color:var(--gold-light);font-family:'DM Mono',monospace;margin-top:1px;}
+.map-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;letter-spacing:.03em;}
+.map-btn:active{transform:scale(.96);}
+.mbtn-navy{background:rgba(255,255,255,.12);color:var(--white);border:1px solid rgba(255,255,255,.2);}
+.mbtn-navy:hover{background:rgba(255,255,255,.2);}
+.mbtn-gold{background:var(--gold);color:var(--white);}
+.mbtn-blue{background:var(--client);color:var(--white);}
+
+/* MAP LEGEND */
+.map-legend{background:var(--navy-mid);padding:6px 12px;display:flex;align-items:center;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.03em;}
+.legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.4);}
+.legend-dot-client{background:var(--client);}
+.legend-dot-lead{background:var(--lead);}
+.legend-dot-me{background:#60a5fa;}
+.legend-sep{flex:1;}
+
+/* MAP GEO BAR */
+.geo-bar{background:rgba(15,32,64,.9);padding:5px 12px;display:flex;align-items:center;gap:7px;font-size:10px;color:rgba(255,255,255,.5);font-family:'DM Mono',monospace;flex-shrink:0;}
+.geo-bar.active{color:#7ee8a2;}
+.geo-dot-bar{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0;}
+.geo-bar.active .geo-dot-bar{background:#7ee8a2;animation:pulse 2s infinite;}
+
+#map-container{flex:1;position:relative;overflow:hidden;}
+#leaflet-map{width:100%;height:100%;}
+
+/* NEARBY PANEL */
+.nearby-panel{position:absolute;bottom:0;left:0;right:0;background:var(--white);border-radius:16px 16px 0 0;padding:14px 14px 24px;box-shadow:0 -6px 30px rgba(15,32,64,.2);z-index:500;max-height:50%;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+.nearby-panel.open{transform:translateY(0);}
+.panel-handle{width:36px;height:4px;background:var(--gray-200);border-radius:4px;margin:0 auto 12px;cursor:pointer;}
+.nearby-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;}
+.nearby-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .15s;}
+.nearby-item:last-child{border-bottom:none;}
+.nearby-item:hover{background:var(--gray-50);}
+.nearby-pin{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.nearby-pin-client{background:var(--client-bg);}
+.nearby-pin-lead{background:var(--lead-bg);}
+.nearby-dist{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--gold);background:var(--gold-pale);padding:3px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+
+/* LEAFLET POPUP CUSTOM */
+.pm-popup{font-family:'DM Sans',sans-serif;min-width:180px;}
+.pm-popup-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.pm-popup-name{font-size:14px;font-weight:700;color:var(--navy);line-height:1.2;}
+.pm-popup-code{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);background:var(--gold-pale);padding:2px 6px;border-radius:4px;white-space:nowrap;margin-top:3px;}
+.pm-popup-row{font-size:11px;color:var(--gray-600);margin-bottom:3px;display:flex;gap:5px;}
+.pm-popup-notes{font-size:11px;color:var(--gray-600);font-style:italic;margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);}
+.pm-popup-nav{display:flex;gap:5px;margin-top:8px;}
+.pm-popup-nav a{flex:1;display:block;text-align:center;padding:6px 4px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;letter-spacing:.03em;}
+.pm-popup-nav-gm{background:#4285F4;color:white;}
+.pm-popup-nav-wz{background:#33ccaa;color:white;}
+.pm-popup-nav-ap{background:#000;color:white;}
+.pm-popup-badge-client{display:inline-block;background:var(--client-bg);color:var(--client-dark);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:6px;}
+.pm-popup-badge-lead{display:inline-block;background:var(--lead-bg);color:var(--lead-dark);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:6px;}
+
+/* MISC */
+.info-banner{background:var(--info-bg);border:1px solid rgba(26,95,160,.2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--info);line-height:1.5;margin-bottom:11px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:var(--white);padding:11px 22px;border-radius:24px;font-size:13px;font-weight:600;border-left:3px solid var(--gold);transition:transform .3s ease;z-index:2000;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.25);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,32,64,.6);z-index:300;align-items:flex-end;}
+.modal-overlay.open{display:flex;}
+.modal-sheet{background:var(--white);border-radius:20px 20px 0 0;padding:16px 16px 32px;width:100%;max-height:88vh;overflow-y:auto;}
+.modal-handle{width:36px;height:4px;background:var(--gray-200);border-radius:4px;margin:0 auto 16px;}
+.print-btn-row{display:flex;gap:10px;margin-bottom:12px;}
+.report-row{border-bottom:1px solid var(--gray-100);padding:9px 0;font-size:12px;}
+.report-row:last-child{border-bottom:none;}
+
+/* LEAFLET overrides */
+.leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.18)!important;padding:0!important;}
+.leaflet-popup-content{margin:12px 14px!important;}
+.leaflet-popup-tip-container{margin-top:-1px;}
+.leaflet-container a{color:inherit!important;}
+
+@media print{.app-header,.nav-tabs,.print-btn-row,.filter-bar{display:none!important;}body{background:white;max-width:100%;}. page.active{padding:0;}.card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;}}
+@media(min-width:480px){body{box-shadow:0 0 40px rgba(0,0,0,.1);}}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-header-top">
+    <div>
+      <h1>🥩 Visit Tracker</h1>
+      <p>Prime Meats — Sales Field App</p>
+    </div>
+    <button class="sync-status disconnected" id="sync-btn" onclick="handleSyncBtn()">
+      <span class="sync-dot"></span>
+      <span id="sync-label">Sin cuenta</span>
+    </button>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('new',this)">+ Nueva</button>
+    <button class="nav-tab" onclick="showPage('list',this)">Visitas</button>
+    <button class="nav-tab" onclick="showPage('map',this)">🗺 Mapa</button>
+    <button class="nav-tab" onclick="showPage('report',this)">Reporte</button>
+    <button class="nav-tab" onclick="showPage('sync',this)">☁️</button>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: NUEVA ══════════════ -->
+<div id="page-new" class="page active">
+  <div id="pending-banner" style="display:none;" class="info-banner">
+    <strong id="pending-count">0</strong> visita(s) pendientes de sincronizar con la nube.
+  </div>
+  <div class="card" style="padding:10px 13px;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;">📍 Ubicación GPS</div>
+        <div id="geo-status-text" style="font-size:10px;color:var(--gray-400);font-family:'DM Mono',monospace;margin-top:2px;">Sin capturar</div>
+      </div>
+      <button class="btn btn-gold" style="padding:7px 13px;font-size:11px;" onclick="captureLocation()">📡 Capturar</button>
+    </div>
+    <div id="nearby-hint" style="display:none;margin-top:8px;padding:7px 10px;background:var(--gold-pale);border-radius:6px;font-size:11px;color:var(--warning);">
+      <strong id="nearby-count">0</strong> clientes cerca — <span style="cursor:pointer;text-decoration:underline;font-weight:600;" onclick="goToMap()">ver en mapa →</span>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;">
+      <span class="card-title" style="margin-bottom:0;">Registrar Visita</span>
+      <span id="form-date-display" style="font-size:10px;color:var(--gray-400);font-family:'DM Mono',monospace;"></span>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Código</label>
+        <input type="text" id="f-code" placeholder="C-1042">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Tipo</label>
+        <select id="f-type" onchange="checkLead()">
+          <option value="client">Cliente</option>
+          <option value="lead">Lead</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nombre <span class="required">*</span></label>
+      <input type="text" id="f-name" placeholder="Nombre del cliente o prospecto">
+    </div>
+    <div id="lead-field" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Lead / Referencia</label>
+        <input type="text" id="f-lead" placeholder="Contacto, referencia...">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Dirección</label>
+      <input type="text" id="f-address" placeholder="Dirección completa">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Ciudad</label>
+      <input type="text" id="f-city" placeholder="Ciudad">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Fecha visita <span class="required">*</span></label>
+        <input type="date" id="f-visit-date">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Próxima visita</label>
+        <input type="date" id="f-next-date">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Notas de seguimiento</label>
+      <textarea id="f-notes" placeholder="Pedido, comentarios, acuerdos..."></textarea>
+    </div>
+    <input type="hidden" id="f-edit-id">
+    <input type="hidden" id="f-lat">
+    <input type="hidden" id="f-lng">
+    <button class="btn btn-primary" onclick="saveVisit()">💾 Guardar Visita</button>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: LISTA ══════════════ -->
+<div id="page-list" class="page">
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="Buscar cliente, ciudad..." oninput="renderList()">
+    <select id="filter-type" onchange="renderList()">
+      <option value="">Todos</option>
+      <option value="client">Clientes</option>
+      <option value="lead">Leads</option>
+    </select>
+  </div>
+  <div id="visits-list"></div>
+</div>
+
+<!-- ══════════════ PAGE: MAPA ══════════════ -->
+<div id="page-map" class="page">
+
+  <div class="map-topbar">
+    <div class="map-title-area">
+      <div class="map-title" id="map-title">Mapa de Clientes</div>
+      <div class="map-subtitle" id="map-subtitle">Cargando...</div>
+    </div>
+    <button class="map-btn mbtn-navy" onclick="filterMapToday()">Hoy</button>
+    <button class="map-btn mbtn-navy" onclick="resetMapFilter()">Todos</button>
+    <button class="map-btn mbtn-blue" onclick="locateMe()">📍 Yo</button>
+    <button class="map-btn mbtn-gold" onclick="showNearby()">🔍</button>
+  </div>
+
+  <div class="map-legend">
+    <div class="legend-item"><div class="legend-dot legend-dot-client"></div>Cliente</div>
+    <div class="legend-item"><div class="legend-dot legend-dot-lead"></div>Lead</div>
+    <div class="legend-item"><div class="legend-dot legend-dot-me"></div>Yo</div>
+    <div class="legend-sep"></div>
+    <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:'DM Mono',monospace;" id="map-count-label">— visitas</div>
+  </div>
+
+  <div class="geo-bar" id="geo-bar">
+    <span class="geo-dot-bar"></span>
+    <span id="geo-bar-text">GPS no activo — toca 📍 Yo</span>
+  </div>
+
+  <div id="map-container">
+    <div id="leaflet-map"></div>
+    <div class="nearby-panel" id="nearby-panel">
+      <div class="panel-handle" onclick="closeNearby()"></div>
+      <div class="nearby-title" id="nearby-panel-title">Clientes Cercanos</div>
+      <div id="nearby-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: REPORTE ══════════════ -->
+<div id="page-report" class="page">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="card-title">Período del Reporte</div>
+    <div class="field-row">
+      <div class="field-group"><label class="field-label">Desde</label><input type="date" id="r-from" onchange="renderReport()"></div>
+      <div class="field-group"><label class="field-label">Hasta</label><input type="date" id="r-to" onchange="renderReport()"></div>
+    </div>
+    <div class="field-row" style="margin-top:9px;">
+      <button class="btn btn-outline" style="flex:1;padding:8px;font-size:12px;" onclick="setRange('day')">Hoy</button>
+      <button class="btn btn-outline" style="flex:1;padding:8px;font-size:12px;" onclick="setRange('week')">Semana</button>
+      <button class="btn btn-outline" style="flex:1;padding:8px;font-size:12px;" onclick="setRange('month')">Mes</button>
+    </div>
+  </div>
+  <div id="report-stats" class="report-stats"></div>
+  <div class="print-btn-row">
+    <button class="btn btn-gold" style="flex:1;" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="btn btn-outline" style="flex:1;" onclick="exportCSV()">📤 CSV</button>
+  </div>
+  <div class="card" style="padding:0 14px;"><div id="report-list"></div></div>
+</div>
+
+<!-- ══════════════ PAGE: SYNC ══════════════ -->
+<div id="page-sync" class="page">
+  <div id="sync-login-section">
+    <div class="card">
+      <div class="card-title">☁️ Sincronización Google Drive</div>
+      <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:13px;">Tus datos se guardan en tu propio Google Drive como archivo privado.</p>
+      <button class="btn btn-google" onclick="signInGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.4 33.6 29.8 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l6.1-6.1C34.5 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.2-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15 17 19.2 14 24 14c3.1 0 5.8 1.1 8 2.9l6.1-6.1C34.5 6.5 29.6 4 24 4c-7.8 0-14.5 4.5-17.7 10.7z"/><path fill="#FBBC04" d="M24 44c5.6 0 10.4-1.8 14.1-5l-6.5-5.3C29.6 35.4 27 36 24 36c-5.7 0-10.4-3.4-12.3-8.3l-7 5.4C8.2 39.8 15.5 44 24 44z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.7c-.9 2.5-2.7 4.6-5 5.9l6.5 5.3c3.8-3.5 6-8.7 6-14.7 0-1.3-.1-2.7-.2-4z"/></svg>
+        Conectar con Google
+      </button>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">Google Client ID</div>
+      <div class="field-group"><input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" oninput="saveClientId()"></div>
+      <p style="font-size:10px;color:var(--gray-400);margin-top:-6px;">Se guarda automáticamente en este dispositivo.</p>
+    </div>
+    <div class="card" style="background:var(--gray-50);">
+      <div class="card-title" style="margin-bottom:8px;">💡 Backup Manual</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-gold" style="flex:1;font-size:12px;padding:9px;" onclick="exportBackup()">📤 Exportar</button>
+        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:9px;" onclick="document.getElementById('import-file').click()">📥 Importar</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackup(event)">
+    </div>
+  </div>
+  <div id="sync-connected-section" style="display:none;">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:13px;">
+        <div id="user-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:700;"></div>
+        <div><div id="user-name" style="font-weight:700;color:var(--navy);font-size:14px;"></div><div id="user-email" style="font-size:11px;color:var(--gray-600);"></div></div>
+      </div>
+      <div id="last-sync-info" style="font-size:11px;color:var(--gray-400);font-family:'DM Mono',monospace;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:2;" onclick="syncNow()">🔄 Sincronizar ahora</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="signOut()">Salir</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-title" style="margin-bottom:8px;">Estado de Datos</div><div id="sync-data-status"></div></div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+const DRIVE_FILE_NAME='pm_visits_data.json';
+const SCOPES='https://www.googleapis.com/auth/drive.file';
+const GEOCODE_URL='https://nominatim.openstreetmap.org/search';
+
+// ── STATE ──────────────────────────────────────────────
+let visits=JSON.parse(localStorage.getItem('pm_visits')||'[]');
+let googleUser=null,driveFileId=localStorage.getItem('pm_drive_file_id')||null,accessToken=null;
+let pendingSync=JSON.parse(localStorage.getItem('pm_pending_sync')||'[]');
+let myLat=null,myLng=null;
+let leafletMap=null,myMarker=null,clientMarkers=[];
+let mapInitialized=false,currentFilter=null;
+
+// ── INIT ───────────────────────────────────────────────
+(function init(){
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('f-visit-date').value=today;
+  document.getElementById('form-date-display').textContent=formatDate(today);
+  document.getElementById('r-from').value=today;
+  document.getElementById('r-to').value=today;
+  const saved=localStorage.getItem('pm_google_client_id')||'';
+  if(saved) document.getElementById('google-client-id').value=saved;
+  updatePendingBanner();renderList();renderReport();
+})();
+
+// ── NAV ────────────────────────────────────────────────
+function showPage(name,tabEl){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(tabEl) tabEl.classList.add('active');
+  if(name==='list') renderList();
+  if(name==='report') renderReport();
+  if(name==='map') setTimeout(()=>{initMap();renderMapMarkers(currentFilter);},120);
+}
+
+function goToMap(){
+  const tab=document.querySelectorAll('.nav-tab')[2];
+  tab.click();
+}
+
+// ── GEOLOCATION ────────────────────────────────────────
+function captureLocation(){
+  if(!navigator.geolocation){showToast('⚠️ GPS no disponible');return;}
+  document.getElementById('geo-status-text').textContent='Capturando...';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    myLat=pos.coords.latitude;myLng=pos.coords.longitude;
+    document.getElementById('f-lat').value=myLat;
+    document.getElementById('f-lng').value=myLng;
+    document.getElementById('geo-status-text').textContent=`✅ ${myLat.toFixed(5)}, ${myLng.toFixed(5)}`;
+    showToast('📍 GPS capturado');
+    checkNearby();
+  },()=>{
+    document.getElementById('geo-status-text').textContent='No se pudo obtener ubicación';
+    showToast('⚠️ Activa el GPS e intenta de nuevo');
+  },{enableHighAccuracy:true,timeout:10000});
+}
+
+function checkNearby(){
+  if(!myLat) return;
+  const n=getNearbySorted(2000);
+  const hint=document.getElementById('nearby-hint');
+  if(n.length>0){hint.style.display='block';document.getElementById('nearby-count').textContent=n.length;}
+  else hint.style.display='none';
+}
+
+function getNearbySorted(maxM){
+  if(!myLat) return[];
+  return visits.filter(v=>v.lat&&v.lng)
+    .map(v=>({...v,dist:haversine(myLat,myLng,v.lat,v.lng)}))
+    .filter(v=>!maxM||v.dist<=maxM)
+    .sort((a,b)=>a.dist-b.dist);
+}
+
+function haversine(a,b,c,d){
+  const R=6371000,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function fmtDist(m){return m<1000?Math.round(m)+'m':(m/1000).toFixed(1)+'km';}
+
+// ── MAP ────────────────────────────────────────────────
+function initMap(){
+  if(mapInitialized)return;
+  mapInitialized=true;
+  leafletMap=L.map('leaflet-map',{zoomControl:true,attributionControl:false}).setView([39.5,-84.7],7);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(leafletMap);
+  L.control.attribution({position:'bottomright',prefix:'© OpenStreetMap © CARTO'}).addTo(leafletMap);
+  setTimeout(()=>leafletMap.invalidateSize(),200);
+}
+
+function makeClientIcon(type){
+  const isClient=type==='client';
+  const bg=isClient?'#1d6fca':'#c0392b';
+  const border=isClient?'#1550a0':'#9b1e1e';
+  const emoji=isClient?'🏪':'⭐';
+  return L.divIcon({
+    className:'',
+    html:`<div style="
+      width:32px;height:32px;border-radius:50%;
+      background:${bg};border:2.5px solid ${border};
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+      display:flex;align-items:center;justify-content:center;
+      font-size:14px;cursor:pointer;
+      transition:transform .15s;
+    ">${emoji}</div>`,
+    iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-18]
+  });
+}
+
+function makePopupHTML(v){
+  const addr=v.address?`<div class="pm-popup-row">📍 ${v.address}${v.city?', '+v.city:''}</div>`:'';
+  const date=`<div class="pm-popup-row">📅 ${formatDate(v.visitDate)}</div>`;
+  const next=v.nextDate?`<div class="pm-popup-row" style="color:var(--success);">🗓 Próxima: ${formatDate(v.nextDate)}</div>`:'';
+  const notes=v.notes?`<div class="pm-popup-notes">💬 ${v.notes.substring(0,80)}${v.notes.length>80?'…':''}</div>`:'';
+  const addrEnc=encodeURIComponent((v.address||'')+(v.city?' '+v.city:''));
+  const nav=`<div class="pm-popup-nav">
+    <a class="pm-popup-nav-gm" href="https://maps.google.com/?q=${addrEnc}" target="_blank">Google Maps</a>
+    <a class="pm-popup-nav-wz" href="https://waze.com/ul?q=${addrEnc}" target="_blank">Waze</a>
+    <a class="pm-popup-nav-ap" href="https://maps.apple.com/?q=${addrEnc}" target="_blank">Apple</a>
+  </div>`;
+  const badge=v.type==='client'?`<span class="pm-popup-badge-client">CLIENTE</span>`:`<span class="pm-popup-badge-lead">LEAD</span>`;
+  return `<div class="pm-popup">
+    ${badge}
+    <div class="pm-popup-header">
+      <div>
+        <div class="pm-popup-name">${v.name}</div>
+        ${v.code?`<div class="pm-popup-code">${v.code}</div>`:''}
+      </div>
+    </div>
+    ${addr}${date}${next}${notes}
+    ${nav}
+  </div>`;
+}
+
+function renderMapMarkers(filterFn){
+  if(!leafletMap)return;
+  clientMarkers.forEach(m=>leafletMap.removeLayer(m));
+  clientMarkers=[];
+  const list=filterFn?visits.filter(filterFn):visits;
+  const withCoords=list.filter(v=>v.lat&&v.lng);
+  const withoutCoords=list.filter(v=>!v.lat&&!v.lng&&(v.address||v.city));
+
+  document.getElementById('map-subtitle').textContent=`${list.length} visitas registradas`;
+  document.getElementById('map-count-label').textContent=`${withCoords.length} con GPS`;
+
+  withCoords.forEach(v=>{
+    const marker=L.marker([v.lat,v.lng],{icon:makeClientIcon(v.type)}).addTo(leafletMap);
+    marker.bindPopup(makePopupHTML(v),{maxWidth:240,minWidth:200});
+    clientMarkers.push(marker);
+  });
+
+  withoutCoords.slice(0,15).forEach(v=>geocodeAndAdd(v));
+
+  if(clientMarkers.length>0){
+    const group=L.featureGroup(clientMarkers);
+    try{leafletMap.fitBounds(group.getBounds().pad(0.25));}catch(e){}
+  }
+  document.getElementById('map-title').textContent=filterFn?'Filtrado':'Mapa de Clientes';
+}
+
+async function geocodeAndAdd(visit){
+  const q=encodeURIComponent(((visit.address||'')+' '+(visit.city||'')).trim());
+  if(!q.trim()) return;
+  try{
+    const res=await fetch(`${GEOCODE_URL}?q=${q}&format=json&limit=1&countrycodes=us`);
+    const data=await res.json();
+    if(data&&data[0]){
+      const lat=parseFloat(data[0].lat),lng=parseFloat(data[0].lon);
+      const idx=visits.findIndex(v=>v.id===visit.id);
+      if(idx>=0){visits[idx].lat=lat;visits[idx].lng=lng;save();}
+      const marker=L.marker([lat,lng],{icon:makeClientIcon(visit.type)}).addTo(leafletMap);
+      marker.bindPopup(makePopupHTML({...visit,lat,lng}),{maxWidth:240,minWidth:200});
+      clientMarkers.push(marker);
+    }
+  }catch(e){}
+}
+
+function locateMe(){
+  if(!navigator.geolocation){showToast('⚠️ GPS no disponible');return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    myLat=pos.coords.latitude;myLng=pos.coords.longitude;
+    if(myMarker) leafletMap.removeLayer(myMarker);
+    const icon=L.divIcon({className:'',html:`<div style="width:20px;height:20px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 5px rgba(37,99,235,.3),0 2px 8px rgba(0,0,0,.3);"></div>`,iconSize:[20,20],iconAnchor:[10,10]});
+    myMarker=L.marker([myLat,myLng],{icon,zIndexOffset:1000}).addTo(leafletMap);
+    myMarker.bindPopup('<div style="font-family:DM Sans,sans-serif;font-weight:700;color:#0f2040;font-size:13px;">📍 Mi ubicación actual</div>').openPopup();
+    leafletMap.setView([myLat,myLng],14);
+    const bar=document.getElementById('geo-bar');bar.classList.add('active');
+    document.getElementById('geo-bar-text').textContent=`GPS activo · ${myLat.toFixed(4)}, ${myLng.toFixed(4)}`;
+    showToast('📍 Ubicación encontrada');
+  },()=>showToast('⚠️ No se pudo obtener ubicación'),{enableHighAccuracy:true,timeout:10000});
+}
+
+function showNearby(){
+  if(!myLat){locateMe();setTimeout(showNearby,3000);return;}
+  const nearby=getNearbySorted(null).slice(0,25);
+  const panel=document.getElementById('nearby-panel');
+  const list=document.getElementById('nearby-list');
+  if(!nearby.length){
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px;">No hay clientes con GPS aún.<br>Registra visitas con GPS activo.</div>';
+  } else {
+    document.getElementById('nearby-panel-title').textContent=`${nearby.length} Clientes — ordenados por distancia`;
+    list.innerHTML=nearby.map(v=>`
+      <div class="nearby-item" onclick="focusMarker(${v.lat},${v.lng})">
+        <div class="nearby-pin nearby-pin-${v.type}">${v.type==='client'?'🏪':'⭐'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.name}${v.code?` <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);">(${v.code})</span>`:''}</div>
+          <div style="font-size:10px;color:var(--gray-600);">${v.city||v.address||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <span class="nearby-dist">${fmtDist(v.dist)}</span>
+          <span class="badge badge-${v.type}" style="font-size:9px;padding:2px 6px;">${v.type==='client'?'Cliente':'Lead'}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+  panel.classList.add('open');
+}
+
+function closeNearby(){document.getElementById('nearby-panel').classList.remove('open');}
+
+function focusMarker(lat,lng){
+  leafletMap.setView([lat,lng],16);
+  closeNearby();
+  clientMarkers.forEach(m=>{
+    const ll=m.getLatLng();
+    if(Math.abs(ll.lat-lat)<0.0001&&Math.abs(ll.lng-lng)<0.0001) m.openPopup();
+  });
+}
+
+function filterMapToday(){
+  const today=new Date().toISOString().split('T')[0];
+  currentFilter=v=>v.visitDate===today;
+  renderMapMarkers(currentFilter);
+  showToast('📅 Mostrando visitas de hoy');
+}
+
+function resetMapFilter(){
+  currentFilter=null;
+  renderMapMarkers(null);
+}
+
+// ── FORM ───────────────────────────────────────────────
+function checkLead(){document.getElementById('lead-field').style.display=document.getElementById('f-type').value==='lead'?'block':'none';}
+
+function clearForm(){
+  ['f-code','f-name','f-lead','f-address','f-city','f-notes','f-edit-id','f-lat','f-lng'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-type').value='client';
+  document.getElementById('f-visit-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-next-date').value='';
+  document.getElementById('lead-field').style.display='none';
+  document.getElementById('geo-status-text').textContent='Sin capturar';
+  document.getElementById('nearby-hint').style.display='none';
+}
+
+function saveVisit(){
+  const name=document.getElementById('f-name').value.trim();
+  const visitDate=document.getElementById('f-visit-date').value;
+  if(!name){showToast('⚠️ El nombre es obligatorio');return;}
+  if(!visitDate){showToast('⚠️ La fecha de visita es obligatoria');return;}
+  const editId=document.getElementById('f-edit-id').value;
+  const lat=parseFloat(document.getElementById('f-lat').value)||null;
+  const lng=parseFloat(document.getElementById('f-lng').value)||null;
+  const visit={
+    id:editId||Date.now().toString(),
+    code:document.getElementById('f-code').value.trim(),
+    name,type:document.getElementById('f-type').value,
+    lead:document.getElementById('f-lead').value.trim(),
+    address:document.getElementById('f-address').value.trim(),
+    city:document.getElementById('f-city').value.trim(),
+    visitDate,nextDate:document.getElementById('f-next-date').value,
+    notes:document.getElementById('f-notes').value.trim(),
+    lat,lng,
+    createdAt:editId?(visits.find(v=>v.id===editId)?.createdAt||Date.now()):Date.now(),
+    synced:false
+  };
+  if(editId){const i=visits.findIndex(v=>v.id===editId);if(i>=0)visits[i]=visit;pendingSync=pendingSync.filter(x=>x!==editId);}
+  else visits.unshift(visit);
+  if(!pendingSync.includes(visit.id)) pendingSync.push(visit.id);
+  save();clearForm();
+  showToast(editId?'✅ Visita actualizada':'✅ Visita registrada');
+  updatePendingBanner();
+  if(!lat&&(visit.address||visit.city)) geocodeVisit(visit);
+  setTimeout(()=>document.querySelectorAll('.nav-tab')[1].click(),800);
+}
+
+async function geocodeVisit(visit){
+  const q=encodeURIComponent(((visit.address||'')+' '+(visit.city||'')).trim());
+  if(!q.trim()) return;
+  try{
+    const res=await fetch(`${GEOCODE_URL}?q=${q}&format=json&limit=1`);
+    const data=await res.json();
+    if(data&&data[0]){
+      const i=visits.findIndex(v=>v.id===visit.id);
+      if(i>=0){visits[i].lat=parseFloat(data[0].lat);visits[i].lng=parseFloat(data[0].lon);save();}
+    }
+  }catch(e){}
+}
+
+function save(){
+  localStorage.setItem('pm_visits',JSON.stringify(visits));
+  localStorage.setItem('pm_pending_sync',JSON.stringify(pendingSync));
+}
+
+function updatePendingBanner(){
+  const c=visits.filter(v=>!v.synced).length;
+  const b=document.getElementById('pending-banner');
+  if(c>0&&!accessToken){b.style.display='block';document.getElementById('pending-count').textContent=c;}
+  else b.style.display='none';
+}
+
+// ── LIST ───────────────────────────────────────────────
+function renderList(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const tf=document.getElementById('filter-type').value;
+  const filtered=visits.filter(v=>{
+    const mq=!q||v.name.toLowerCase().includes(q)||(v.city||'').toLowerCase().includes(q)||(v.code||'').toLowerCase().includes(q);
+    return mq&&(!tf||v.type===tf);
+  });
+  const el=document.getElementById('visits-list');
+  if(!filtered.length){el.innerHTML=`<div class="empty-state"><p>No hay visitas registradas</p></div>`;return;}
+  el.innerHTML=filtered.map(v=>`
+    <div class="visit-card is-${v.type}" onclick="openDetail('${v.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div class="client-name">${v.name}</div>
+          ${v.city?`<div style="font-size:11px;color:var(--gray-600);margin-top:1px;">📍 ${v.city}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          ${v.code?`<span class="client-code">${v.code}</span>`:''}
+          <span class="badge badge-${v.type}" style="font-size:10px;">${v.type==='client'?'Cliente':'Lead'}</span>
+          ${v.lat?'<span style="font-size:9px;color:var(--success);">📌 GPS</span>':''}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--gray-600);">📅 ${formatDate(v.visitDate)}</div>
+      ${v.nextDate?`<div style="font-size:11px;color:var(--success);font-weight:600;margin-top:2px;">🗓 ${formatDate(v.nextDate)}</div>`:''}
+      ${v.notes?`<div style="font-size:12px;color:var(--gray-600);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💬 ${v.notes}</div>`:''}
+    </div>
+  `).join('');
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────
+function openDetail(id){
+  const v=visits.find(x=>x.id===id);if(!v)return;
+  const addrEnc=encodeURIComponent((v.address||'')+(v.city?' '+v.city:''));
+  document.getElementById('modal-content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+      <div><div style="font-size:17px;font-weight:700;color:var(--navy);">${v.name}</div>${v.code?`<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-top:3px;">${v.code}</div>`:''}</div>
+      <span class="badge badge-${v.type}">${v.type==='client'?'Cliente':'Lead'}</span>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      ${v.lead?`<tr><td style="padding:5px 0;color:var(--gray-600);width:38%;">Lead/Ref</td><td style="padding:5px 0;font-weight:500;">${v.lead}</td></tr>`:''}
+      ${v.address?`<tr><td style="padding:5px 0;color:var(--gray-600);">Dirección</td><td style="padding:5px 0;">${v.address}</td></tr>`:''}
+      ${v.city?`<tr><td style="padding:5px 0;color:var(--gray-600);">Ciudad</td><td style="padding:5px 0;">${v.city}</td></tr>`:''}
+      <tr><td style="padding:5px 0;color:var(--gray-600);">Fecha visita</td><td style="padding:5px 0;font-weight:600;">${formatDate(v.visitDate)}</td></tr>
+      ${v.nextDate?`<tr><td style="padding:5px 0;color:var(--gray-600);">Próxima</td><td style="padding:5px 0;color:var(--success);font-weight:600;">${formatDate(v.nextDate)}</td></tr>`:''}
+      ${v.lat?`<tr><td style="padding:5px 0;color:var(--gray-600);">GPS</td><td style="padding:5px 0;font-size:10px;font-family:'DM Mono',monospace;color:var(--success);">✅ ${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}</td></tr>`:''}
+    </table>
+    ${v.notes?`<div style="margin-top:11px;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius-sm);border-left:3px solid var(--gold);"><div style="font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notas</div><div style="font-size:13px;line-height:1.6;">${v.notes}</div></div>`:''}
+    <div style="margin-top:12px;">
+      <div style="font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;">Navegar</div>
+      <div style="display:flex;gap:7px;">
+        <a href="https://maps.google.com/?q=${addrEnc}" target="_blank" style="flex:1;display:block;text-align:center;padding:9px 4px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;background:#4285F4;color:white;">Google Maps</a>
+        <a href="https://waze.com/ul?q=${addrEnc}" target="_blank" style="flex:1;display:block;text-align:center;padding:9px 4px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;background:#33ccaa;color:white;">Waze</a>
+        <a href="https://maps.apple.com/?q=${addrEnc}" target="_blank" style="flex:1;display:block;text-align:center;padding:9px 4px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;background:#000;color:white;">Apple Maps</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:12px;">
+      <button class="btn btn-gold" style="flex:1;" onclick="editVisit('${v.id}')">✏️ Editar</button>
+      ${v.lat?`<button class="btn btn-outline" style="flex:1;" onclick="viewOnMap('${v.id}')">🗺 Mapa</button>`:''}
+      <button class="btn btn-danger" onclick="deleteVisit('${v.id}')">🗑</button>
+    </div>
+  `;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function viewOnMap(id){
+  const v=visits.find(x=>x.id===id);if(!v||!v.lat)return;
+  document.getElementById('detail-modal').classList.remove('open');
+  const tab=document.querySelectorAll('.nav-tab')[2];tab.click();
+  setTimeout(()=>{
+    initMap();renderMapMarkers(currentFilter);
+    leafletMap.setView([v.lat,v.lng],16);
+    setTimeout(()=>{
+      clientMarkers.forEach(m=>{
+        const ll=m.getLatLng();
+        if(Math.abs(ll.lat-v.lat)<0.0001&&Math.abs(ll.lng-v.lng)<0.0001) m.openPopup();
+      });
+    },400);
+  },300);
+}
+
+function closeModal(e){if(e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open');}
+
+function editVisit(id){
+  const v=visits.find(x=>x.id===id);if(!v)return;
+  document.getElementById('detail-modal').classList.remove('open');
+  document.getElementById('f-code').value=v.code||'';document.getElementById('f-name').value=v.name;
+  document.getElementById('f-type').value=v.type;document.getElementById('f-lead').value=v.lead||'';
+  document.getElementById('f-address').value=v.address||'';document.getElementById('f-city').value=v.city||'';
+  document.getElementById('f-visit-date').value=v.visitDate;document.getElementById('f-next-date').value=v.nextDate||'';
+  document.getElementById('f-notes').value=v.notes||'';document.getElementById('f-edit-id').value=v.id;
+  if(v.lat){document.getElementById('f-lat').value=v.lat;document.getElementById('f-lng').value=v.lng;document.getElementById('geo-status-text').textContent=`✅ ${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}`;}
+  checkLead();document.querySelectorAll('.nav-tab')[0].click();window.scrollTo(0,0);
+}
+
+function deleteVisit(id){
+  if(!confirm('¿Eliminar esta visita?'))return;
+  visits=visits.filter(v=>v.id!==id);pendingSync=pendingSync.filter(x=>x!==id);
+  save();document.getElementById('detail-modal').classList.remove('open');
+  renderList();showToast('🗑 Visita eliminada');updatePendingBanner();
+}
+
+// ── REPORT ─────────────────────────────────────────────
+function setRange(p){
+  const t=new Date();let f,to;
+  if(p==='day'){f=to=t.toISOString().split('T')[0];}
+  else if(p==='week'){const d=t.getDay();const m=new Date(t);m.setDate(t.getDate()-(d===0?6:d-1));const s=new Date(m);s.setDate(m.getDate()+6);f=m.toISOString().split('T')[0];to=s.toISOString().split('T')[0];}
+  else{f=new Date(t.getFullYear(),t.getMonth(),1).toISOString().split('T')[0];to=new Date(t.getFullYear(),t.getMonth()+1,0).toISOString().split('T')[0];}
+  document.getElementById('r-from').value=f;document.getElementById('r-to').value=to;renderReport();
+}
+
+function renderReport(){
+  const f=document.getElementById('r-from').value,to=document.getElementById('r-to').value;
+  if(!f||!to)return;
+  const fil=visits.filter(v=>v.visitDate>=f&&v.visitDate<=to);
+  const leads=fil.filter(v=>v.type==='lead').length,clients=fil.filter(v=>v.type==='client').length;
+  const next=fil.filter(v=>v.nextDate).length,gps=fil.filter(v=>v.lat).length;
+  document.getElementById('report-stats').innerHTML=`
+    <div class="stat-box"><div class="stat-number">${fil.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat-box" style="border-top:3px solid var(--client);"><div class="stat-number" style="color:var(--client);">${clients}</div><div class="stat-label">Clientes</div></div>
+    <div class="stat-box" style="border-top:3px solid var(--lead);"><div class="stat-number" style="color:var(--lead);">${leads}</div><div class="stat-label">Leads</div></div>
+    <div class="stat-box"><div class="stat-number">${next}</div><div class="stat-label">Con seguimiento</div></div>
+  `;
+  const sorted=[...fil].sort((a,b)=>b.visitDate.localeCompare(a.visitDate));
+  document.getElementById('report-list').innerHTML=sorted.length?sorted.map(v=>`
+    <div class="report-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:600;color:var(--navy);font-size:13px;">${v.name}${v.code?` <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);">(${v.code})</span>`:''}</div>
+        <span class="badge badge-${v.type}" style="font-size:10px;">${v.type==='client'?'Cliente':'Lead'}</span>
+      </div>
+      <div style="color:var(--gray-600);font-size:11px;margin-top:2px;">${formatDate(v.visitDate)}${v.city?' · '+v.city:''}${v.nextDate?' · 🗓 '+formatDate(v.nextDate):''}</div>
+      ${v.notes?`<div style="font-size:11px;color:var(--gray-600);margin-top:3px;font-style:italic;">${v.notes}</div>`:''}
+    </div>
+  `).join(''):'<div style="padding:20px 0;text-align:center;color:var(--gray-400);font-size:13px;">Sin visitas en este período</div>';
+}
+
+function exportCSV(){
+  const f=document.getElementById('r-from').value,to=document.getElementById('r-to').value;
+  const fil=visits.filter(v=>v.visitDate>=f&&v.visitDate<=to);
+  const h=['Código','Nombre','Tipo','Lead/Ref','Dirección','Ciudad','Fecha Visita','Próxima','Notas','Lat','Lng'];
+  const r=fil.map(v=>[v.code,v.name,v.type==='client'?'Cliente':'Lead',v.lead,v.address,v.city,v.visitDate,v.nextDate,v.notes,v.lat||'',v.lng||''].map(x=>`"${(x||'').toString().replace(/"/g,'""')}"`));
+  const csv=[h,...r].map(x=>x.join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`visitas_${f}_${to}.csv`;a.click();
+  showToast('📤 CSV exportado');
+}
+
+// ── BACKUP ─────────────────────────────────────────────
+function exportBackup(){
+  const b=new Blob([JSON.stringify({visits,exportedAt:new Date().toISOString(),version:4},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`pm_visits_backup_${new Date().toISOString().split('T')[0]}.json`;a.click();
+  showToast('📤 Backup exportado');
+}
+
+function importBackup(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();r.onload=ev=>{
+    try{const d=JSON.parse(ev.target.result);const imp=d.visits||d;if(!Array.isArray(imp))throw new Error();
+      const ex=new Set(visits.map(v=>v.id));let n=0;imp.forEach(v=>{if(!ex.has(v.id)){visits.unshift(v);n++;}});
+      save();renderList();showToast(`✅ ${n} visita(s) importadas`);
+    }catch{showToast('❌ Error al importar');}
+  };r.readAsText(file);e.target.value='';
+}
+
+// ── GOOGLE DRIVE ───────────────────────────────────────
+function saveClientId(){localStorage.setItem('pm_google_client_id',document.getElementById('google-client-id').value.trim());}
+function handleSyncBtn(){document.querySelectorAll('.nav-tab')[4].click();}
+
+function signInGoogle(){
+  const cid=(document.getElementById('google-client-id').value||localStorage.getItem('pm_google_client_id')||'').trim();
+  if(!cid||!cid.includes('apps.googleusercontent.com')){showToast('⚠️ Ingresa tu Google Client ID');return;}
+  google.accounts.oauth2.initTokenClient({client_id:cid,scope:SCOPES,callback:async t=>{
+    if(t.error){showToast('❌ Error al conectar');return;}
+    accessToken=t.access_token;await fetchUserInfo();await findOrCreateDriveFile();showConnectedUI();syncNow();
+  }}).requestAccessToken();
+}
+
+async function fetchUserInfo(){
+  try{const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});googleUser=await r.json();}
+  catch{googleUser={name:'Usuario',email:''};}
+}
+
+async function findOrCreateDriveFile(){
+  setSyncStatus('syncing','Buscando...');
+  if(driveFileId){const c=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}`,{headers:{Authorization:`Bearer ${accessToken}`}});if(c.ok)return;driveFileId=null;localStorage.removeItem('pm_drive_file_id');}
+  const s=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false`,{headers:{Authorization:`Bearer ${accessToken}`}});
+  const res=await s.json();
+  if(res.files&&res.files.length>0){driveFileId=res.files[0].id;localStorage.setItem('pm_drive_file_id',driveFileId);}
+  else{
+    const fm=new FormData();fm.append('metadata',new Blob([JSON.stringify({name:DRIVE_FILE_NAME,mimeType:'application/json'})],{type:'application/json'}));
+    fm.append('file',new Blob([JSON.stringify({visits:[],version:4})],{type:'application/json'}));
+    const cr=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:`Bearer ${accessToken}`},body:fm});
+    driveFileId=(await cr.json()).id;localStorage.setItem('pm_drive_file_id',driveFileId);
+  }
+}
+
+async function syncNow(){
+  if(!accessToken){showToast('⚠️ Conéctate primero');return;}
+  setSyncStatus('syncing','Sincronizando...');
+  try{
+    const dl=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`}});
+    const cloud=await dl.json();
+    visits=mergeVisits(visits,cloud.visits||[]);visits.forEach(v=>v.synced=true);pendingSync=[];save();
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({visits,syncedAt:new Date().toISOString(),version:4})});
+    const now=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+    localStorage.setItem('pm_last_sync',now);document.getElementById('last-sync-info').textContent=`Última sync: ${now}`;
+    setSyncStatus('connected','Conectado');updateSyncDataStatus();updatePendingBanner();renderList();
+    showToast('☁️ Sincronizado con Google Drive');
+  }catch{setSyncStatus('disconnected','Error');showToast('❌ Error al sincronizar');}
+}
+
+function mergeVisits(local,cloud){
+  const m=new Map();[...cloud,...local].forEach(v=>{if(!m.has(v.id)||(v.createdAt>(m.get(v.id).createdAt||0)))m.set(v.id,v);});
+  return Array.from(m.values()).sort((a,b)=>b.visitDate.localeCompare(a.visitDate));
+}
+
+function showConnectedUI(){
+  document.getElementById('sync-login-section').style.display='none';document.getElementById('sync-connected-section').style.display='block';
+  document.getElementById('user-name').textContent=googleUser.name||'Usuario';document.getElementById('user-email').textContent=googleUser.email||'';
+  document.getElementById('user-avatar').textContent=(googleUser.name||'U')[0].toUpperCase();
+  document.getElementById('last-sync-info').textContent=localStorage.getItem('pm_last_sync')?`Última sync: ${localStorage.getItem('pm_last_sync')}`:'Sin sincronizaciones aún';
+  setSyncStatus('connected','Conectado');updateSyncDataStatus();
+}
+
+function updateSyncDataStatus(){
+  const t=visits.length,s=visits.filter(v=>v.synced).length,p=t-s;
+  document.getElementById('sync-data-status').innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px;"><span style="color:var(--gray-600);">Total visitas</span><strong>${t}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px;"><span style="color:var(--gray-600);">Sincronizadas</span><strong style="color:var(--success);">${s}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:var(--gray-600);">Pendientes</span><strong style="color:${p>0?'var(--warning)':'var(--success)'};">${p}</strong></div>
+  `;
+}
+
+function signOut(){
+  accessToken=null;googleUser=null;
+  document.getElementById('sync-login-section').style.display='block';document.getElementById('sync-connected-section').style.display='none';
+  setSyncStatus('disconnected','Sin cuenta');updatePendingBanner();showToast('👋 Sesión cerrada');
+}
+
+function setSyncStatus(state,label){
+  document.getElementById('sync-btn').className=`sync-status ${state}`;document.getElementById('sync-label').textContent=label;
+}
+
+function formatDate(d){
+  if(!d)return'';const[y,m,day]=d.split('-');
+  return`${parseInt(day)} ${'ene,feb,mar,abr,may,jun,jul,ago,sep,oct,nov,dic'.split(',')[parseInt(m)-1]} ${y}`;
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
