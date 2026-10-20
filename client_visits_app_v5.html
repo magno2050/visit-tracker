@@ -198,7 +198,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .biz-history{display:none;margin:4px 0 12px;border:1.5px solid var(--gold-pale,#f3e6cf);border-radius:10px;background:#fffaf1;overflow:hidden;}
 .biz-history.show{display:block;}
 .bh-head{padding:9px 11px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
-.bh-list{max-height:260px;overflow-y:auto;border-top:1px solid #f0e2c8;}
+.bh-list{max-height:420px;overflow-y:auto;border-top:1px solid #f0e2c8;}
+.bh-photos{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.bh-photos img{width:54px;height:54px;object-fit:cover;border-radius:7px;cursor:pointer;border:1.5px solid #f0e2c8;}
 .bh-item{padding:8px 11px;border-bottom:1px solid #f3e9d6;font-size:12px;}
 .bh-item:last-child{border-bottom:none;}
 .bh-date{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gold);font-weight:700;}
@@ -231,6 +233,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .saved-item .si-btns{display:flex;gap:6px;margin-top:8px;}
 .saved-item .si-btns button{flex:1;border:none;border-radius:7px;padding:7px 4px;font-size:11.5px;font-weight:700;cursor:pointer;}
 .plan-label{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 5px;}
+
+.period-bar{margin:-3px 0 10px;}
+.period-chips{display:flex;gap:6px;overflow-x:auto;}
+.pchip{border:1.5px solid var(--gray-200);background:var(--white);color:var(--navy);border-radius:16px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.pchip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.period-label{font-size:11px;color:var(--gray-600);margin-top:6px;}
+.period-label b{color:var(--navy);text-transform:capitalize;}
+
+.visit-card.novisit{border:1.5px solid #e3a3a3;border-left:5px solid #b42318;background:#fff3f2;}
+.visit-card.novisit .nv-badge{display:inline-block;}
+.nv-badge{display:none;font-size:9px;font-weight:800;color:#fff;background:#b42318;padding:2px 6px;border-radius:4px;letter-spacing:.04em;}
+.nv-box{background:#fff3f2;border:1.5px solid #b42318;color:#8a1c12;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;line-height:1.5;}
+.nv-box b{font-size:13px;}
+.nv-opt{display:block;width:100%;text-align:left;border:1.5px solid var(--gray-200);background:var(--white);border-radius:10px;padding:11px 12px;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;}
+.nv-opt.sel{border-color:#b42318;background:#fff3f2;}
 
 /* STATUS SELECTOR */
 .status-pills{display:flex;gap:6px;flex-wrap:wrap;}
@@ -343,12 +360,10 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
       </div>
     </div>
     <div class="code-hint" id="code-hint"></div>
+    <div id="nv-form-banner" style="display:none;"></div>
+    <div id="edit-banner" style="display:none;margin:2px 0 10px;padding:9px 11px;border-radius:9px;background:#fdf1e4;border:1.5px solid #c8923a;color:#7a4e0e;font-size:12px;line-height:1.5;"></div>
     <div class="field-group"><label class="field-label">Nombre <span class="req">*</span></label><input type="text" id="f-name" placeholder="Nombre del cliente o prospecto" list="biz-names" onchange="onNameInput()"></div>
     <datalist id="biz-names"></datalist>
-    <div class="biz-history" id="biz-history">
-      <div class="bh-head" onclick="document.getElementById('bh-list').style.display=document.getElementById('bh-list').style.display==='none'?'block':'none'"><span id="bh-title">📋 Historial</span><span style="color:var(--gray-400);">▾</span></div>
-      <div class="bh-list" id="bh-list"></div>
-    </div>
     <div id="lead-field" style="display:none;">
       <div class="field-group"><label class="field-label">Lead / Referencia</label><input type="text" id="f-lead" placeholder="Contacto, referencia..."></div>
     </div>
@@ -381,7 +396,11 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
       <input type="text" id="f-amount" placeholder="0.00" inputmode="decimal">
     </div>
 
-    <div class="field-group"><label class="field-label">Notas de seguimiento</label><textarea id="f-notes" placeholder="Pedido, comentarios, acuerdos..."></textarea></div>
+    <div class="biz-history" id="biz-history">
+      <div class="bh-head" onclick="document.getElementById('bh-list').style.display=document.getElementById('bh-list').style.display==='none'?'block':'none'"><span id="bh-title">📋 Visitas anteriores</span><span style="color:var(--gray-400);">▾</span></div>
+      <div class="bh-list" id="bh-list"></div>
+    </div>
+    <div class="field-group"><label class="field-label" id="notes-label">Notas de seguimiento</label><textarea id="f-notes" placeholder="Pedido, comentarios, acuerdos..."></textarea></div>
 
     <!-- PHOTOS (hasta 5) -->
     <div class="field-group">
@@ -418,8 +437,16 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
       <option value="">Todos</option><option value="client">Clientes</option><option value="lead">Leads</option>
     </select>
     <select id="filter-status" onchange="renderList()">
-      <option value="">Estado</option><option value="active">Activo</option><option value="inactive">Inactivo</option><option value="atrisk">En riesgo</option><option value="overdue">Vencidos</option><option value="scheduled">📅 Programadas</option>
+      <option value="">Estado</option><option value="active">Activo</option><option value="inactive">Inactivo</option><option value="atrisk">En riesgo</option><option value="overdue">Vencidos</option><option value="scheduled">📅 Programadas</option><option value="novisit">🚫 No visitar</option>
     </select>
+  </div>
+  <div class="period-bar">
+    <div class="period-chips">
+      <button class="pchip active" data-p="month" onclick="setPeriod('month')">Este mes</button>
+      <button class="pchip" data-p="prev" onclick="setPeriod('prev')">Mes anterior</button>
+      <button class="pchip" data-p="custom" onclick="openPeriodModal()">📅 Buscar fechas</button>
+    </div>
+    <div class="period-label" id="period-label"></div>
   </div>
   <div id="visits-list"></div>
 </div>
@@ -558,6 +585,43 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
 <!-- DETAIL MODAL -->
 <div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
   <div class="modal-sheet"><div class="modal-handle"></div><div id="modal-content"></div></div>
+</div>
+
+<!-- PERIOD MODAL -->
+<div class="modal-overlay" id="period-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="card-title">📅 Buscar visitas por fecha</div>
+    <div class="plan-label">Ver un mes completo</div>
+    <div style="display:flex;gap:8px;"><input type="month" id="pm-month" style="flex:1;" onchange="updateQuickRanges()"><button class="btn btn-primary" style="padding:9px 14px;" onclick="applyMonth()">Ver</button></div>
+    <div class="plan-label">O una parte de ese mes</div>
+    <div style="display:flex;gap:6px;" id="pm-quick"></div>
+    <div class="plan-label">O un rango exacto de días</div>
+    <div class="field-row">
+      <div class="field-group"><label class="field-label">Desde</label><input type="date" id="pm-from"></div>
+      <div class="field-group"><label class="field-label">Hasta</label><input type="date" id="pm-to"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="applyRange()">🔎 Buscar visitas</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="setPeriod('all');document.getElementById('period-modal').classList.remove('open')">Ver todo el historial</button>
+  </div>
+</div>
+
+<!-- NO VISITAR MODAL -->
+<div class="modal-overlay" id="nv-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="card-title">🚫 Marcar como NO VISITAR</div>
+    <div style="font-size:12px;color:var(--gray-600);margin:4px 0 12px;" id="nv-name"></div>
+    <button class="nv-opt" data-r="won" onclick="pickNvReason(this)">✅ Ya lo capté como cliente</button>
+    <button class="nv-opt" data-r="discarded" onclick="pickNvReason(this)">❌ No me sirve / descartado</button>
+    <button class="nv-opt" data-r="other" onclick="pickNvReason(this)">📝 Otro motivo</button>
+    <textarea id="nv-note" placeholder="Comentario opcional (ej. compra solo a Restaurant Depot)" style="min-height:60px;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn" style="flex:2;background:#b42318;color:#fff;" onclick="confirmNoVisit()">🚫 Marcar NO VISITAR</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('nv-modal').classList.remove('open')">Cancelar</button>
+    </div>
+    <div style="font-size:11px;color:var(--gray-600);margin-top:9px;">El cliente y todo su historial siguen guardados. Puedes reactivarlo cuando quieras.</div>
+  </div>
 </div>
 
 <!-- PLAN MODAL -->
@@ -808,7 +872,7 @@ function setGoal(){
 // ── OVERDUE ────────────────────────────────────────────
 function updateOverdueBanner(){
   const today=todayStr();
-  const overdue=getBusinesses().filter(b=>b.last.nextDate&&b.last.nextDate<today);
+  const overdue=getBusinesses().filter(b=>!bizNV(b)&&b.last.nextDate&&b.last.nextDate<today);
   const b=document.getElementById('overdue-banner');
   if(overdue.length>0){
     b.style.display='block';
@@ -908,9 +972,10 @@ function initMap(){
 }
 
 function makeIcon(type){
-  const bg=type==='client'?'#1d6fca':'#c0392b';
-  const border=type==='client'?'#1550a0':'#9b1e1e';
-  const em=type==='client'?'🏪':'⭐';
+  const nvT=type==='novisit';
+  const bg=nvT?'#7f1d1d':type==='client'?'#1d6fca':'#c0392b';
+  const border=nvT?'#450a0a':type==='client'?'#1550a0':'#9b1e1e';
+  const em=nvT?'<span style="color:#fff;font-weight:900;font-size:10px;">✕</span>':type==='client'?'🏪':'⭐';
   return L.divIcon({className:'',html:`<div style="width:18px;height:18px;border-radius:50%;background:${bg};border:2px solid #fff;box-shadow:0 0 0 1px ${border},0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:8px;line-height:1;cursor:pointer;">${em}</div>`,iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-10]});
 }
 
@@ -920,7 +985,7 @@ function makePopup(v){
   const amtHtml=v.amount?`<div class="pm-popup-row">💰 $${parseFloat(v.amount).toLocaleString()}</div>`:'';
   return`<div class="pm-popup">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-      <span class="${v.type==='client'?'badge-client':'badge-lead'} badge" style="font-size:9px;">${v.type==='client'?'CLIENTE':'LEAD'}</span>
+      ${v._nv?'<span class="nv-badge" style="display:inline-block;">🚫 NO VISITAR</span>':`<span class="${v.type==='client'?'badge-client':'badge-lead'} badge" style="font-size:9px;">${v.type==='client'?'CLIENTE':'LEAD'}</span>`}
       ${v.status?`<span style="font-size:10px;color:var(--gray-600);">${statusMap[v.status]||''}</span>`:''}
     </div>
     <div class="pm-popup-name">${v.name}${v.code?` <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);">(${v.code})</span>`:''}</div>
@@ -942,13 +1007,13 @@ function renderMapMarkers(ff){
   if(!leafletMap)return;
   clientMarkers.forEach(m=>leafletMap.removeLayer(m));clientMarkers=[];
   const bl=getBusinesses().filter(b=>!ff||b.visits.some(ff));
-  const list=bl.map(b=>({...b.last,lat:b.lat,lng:b.lng,_n:b.visits.length}));
+  const list=bl.map(b=>{const nv=bizNV(b);return{...b.last,lat:b.lat,lng:b.lng,_n:b.visits.length,_nv:nv,_icon:nv?'novisit':b.last.type};});
   const wc=list.filter(v=>v.lat&&v.lng);
   const wo=list.filter(v=>!v.lat&&!v.lng&&(v.address||v.city));
   document.getElementById('map-subtitle').textContent=`${list.length} negocios`;
   document.getElementById('map-count-label').textContent=`${wc.length} con GPS`;
   wc.forEach(v=>{
-    const m=L.marker([v.lat,v.lng],{icon:makeIcon(v.type)}).addTo(leafletMap);
+    const m=L.marker([v.lat,v.lng],{icon:makeIcon(v._icon||v.type)}).addTo(leafletMap);
     m.bindPopup(makePopup(v),{maxWidth:230,minWidth:190});
     clientMarkers.push(m);
   });
@@ -967,7 +1032,7 @@ async function geocodeAndAdd(visit,map,markers,iconFn,popupFn){
       const lat=parseFloat(d[0].lat),lng=parseFloat(d[0].lon);
       const i=visits.findIndex(v=>v.id===visit.id);
       if(i>=0){visits[i].lat=lat;visits[i].lng=lng;save([visit.id]);}
-      const m=L.marker([lat,lng],{icon:iconFn(visit.type)}).addTo(map);
+      const m=L.marker([lat,lng],{icon:iconFn(visit._icon||visit.type)}).addTo(map);
       m.bindPopup(popupFn({...visit,lat,lng}),{maxWidth:230,minWidth:190});
       markers.push(m);
     }
@@ -1041,7 +1106,7 @@ function openAddStop(){
   document.getElementById('stop-modal').classList.add('open');
   setTimeout(()=>document.getElementById('stop-code').focus(),250);
 }
-function scheduledToday(){const t=todayStr();return getBusinesses().filter(b=>b.last.nextDate===t).sort((a,b)=>(a.last.nextTime||'99').localeCompare(b.last.nextTime||'99'));}
+function scheduledToday(){const t=todayStr();return getBusinesses().filter(b=>!bizNV(b)&&b.last.nextDate===t).sort((a,b)=>(a.last.nextTime||'99').localeCompare(b.last.nextTime||'99'));}
 function renderQuickAdd(){
   const q=(document.getElementById('qa-search').value||'').toLowerCase(),t=todayStr();
   let bs=getBusinesses().filter(b=>{const v=b.last;return!q||(v.name||'').toLowerCase().includes(q)||(v.code||'').toLowerCase().includes(q)||(v.city||'').toLowerCase().includes(q)||(v.address||'').toLowerCase().includes(q);});
@@ -1050,7 +1115,7 @@ function renderQuickAdd(){
   document.getElementById('quick-add-list').innerHTML=bs.slice(0,150).map(b=>{const v=b.last,on=inRoute.has(normCode(v.code));return`
     <div class="qa-item" onclick="quickAddStop('${v.id}')" style="${on?'opacity:.45;':''}">
       <div class="nearby-pin ${v.type==='client'?'npin-client':'npin-lead'}" style="width:26px;height:26px;font-size:11px;flex-shrink:0;">${v.type==='client'?'🏪':'⭐'}</div>
-      <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span class="stop-code">${esc(v.code||'')}</span>${esc(v.name)}</div>
+      <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span class="stop-code">${esc(v.code||'')}</span>${esc(v.name)}${bizNV(b)?' <span class="nv-badge" style="display:inline-block;">🚫</span>':''}</div>
         <div style="font-size:10px;color:var(--gray-600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.address||v.city||'Sin dirección')}</div>
         ${v.nextDate&&v.nextDate>=t?`<div style="font-size:10px;color:var(--success);font-weight:700;">🗓 ${v.nextDate===t?'HOY · ':''}${fmtNext(v)}</div>`:''}</div>
       <span style="font-size:15px;color:var(--gold);font-weight:700;">${on?'✓':'+'}</span>
@@ -1445,7 +1510,8 @@ function showHistory(biz,excludeId){
   document.getElementById('bh-list').style.display='block';
   document.getElementById('bh-list').innerHTML=list.map(v=>`<div class="bh-item">
     <div class="bh-date">📅 ${formatDate(v.visitDate)}${visitTimeOf(v)?' · '+fmtTime(visitTimeOf(v)):''}${v.amount?` · <span style="color:var(--success);">$${parseFloat(v.amount).toLocaleString()}</span>`:''}${(v.photos||[]).length?` · 📷 ${v.photos.length}`:''}</div>
-    <div class="bh-note">${v.notes?esc(v.notes):'<i style="color:var(--gray-400);">Sin comentarios</i>'}</div></div>`).join('');
+    <div class="bh-note">${v.notes?esc(v.notes):'<i style="color:var(--gray-400);">Sin comentarios</i>'}</div>
+    ${(v.photos||[]).length?`<div class="bh-photos">${v.photos.map((p,j)=>`<img src="${p}" onclick="openPhoto(visits.find(z=>z.id==='${v.id}').photos[${j}])">`).join('')}</div>`:''}</div>`).join('');
   box.classList.add('show');
 }
 function fillFromBiz(biz){
@@ -1463,6 +1529,11 @@ function fillFromBiz(biz){
   const hint=document.getElementById('code-hint');hint.className='code-hint found';
   hint.textContent=`✅ ${v.name} (${v.code}) — última visita ${formatDate(v.visitDate)}`;
   showHistory(biz,document.getElementById('f-edit-id').value);
+  refreshFormNV();
+  if(!document.getElementById('f-edit-id').value){
+    document.getElementById('notes-label').textContent='Notas de la visita de hoy';
+    document.getElementById('f-notes').placeholder='Escribe lo de hoy. Los comentarios y fotos anteriores quedan guardados arriba.';
+  }
 }
 let _codeT=null;
 function onCodeInput(){
@@ -1496,6 +1567,10 @@ function clearForm(){
   document.getElementById('f-next-time').disabled=true;
   document.getElementById('f-visit-time').value=nowTime();
   document.getElementById('code-hint').textContent='';document.getElementById('biz-history').classList.remove('show');
+  document.getElementById('edit-banner').style.display='none';
+  document.getElementById('nv-form-banner').style.display='none';
+  document.getElementById('notes-label').textContent='Notas de seguimiento';
+  document.getElementById('f-notes').placeholder='Pedido, comentarios, acuerdos...';
   document.getElementById('f-type').value='client';document.getElementById('f-status').value='active';
   document.getElementById('f-visit-date').value=todayStr();
   document.getElementById('f-next-date').value='';document.getElementById('lead-field').style.display='none';
@@ -1508,7 +1583,7 @@ function setSavedState(id,text){
   formSavedId=id;
   const b=document.getElementById('save-btn'),ok=document.getElementById('save-ok');
   if(id){b.textContent='✅ Ya guardada';b.classList.add('is-saved');ok.classList.add('show');document.getElementById('save-ok-text').innerHTML=text||'';}
-  else{b.textContent='💾 Guardar Visita';b.classList.remove('is-saved');ok.classList.remove('show');}
+  else{b.textContent=document.getElementById('f-edit-id').value?'💾 Guardar cambios de esta visita':'💾 Guardar Visita';b.classList.remove('is-saved');ok.classList.remove('show');}
   renderPhotoGrid();
 }
 function showSavedWarning(){
@@ -1525,7 +1600,22 @@ async function saveVisit(){
   const visitDate=document.getElementById('f-visit-date').value;
   if(!name){showToast('⚠️ El nombre es obligatorio');return;}
   if(!visitDate){showToast('⚠️ La fecha es obligatoria');return;}
-  const editId=document.getElementById('f-edit-id').value;
+  let editId=document.getElementById('f-edit-id').value;
+  if(editId){
+    const orig=visits.find(x=>x.id===editId);
+    if(orig&&orig.visitDate!==visitDate){
+      const asNew=confirm(`Estás EDITANDO la visita del ${formatDate(orig.visitDate)}.\n\n• Aceptar = guardar como visita NUEVA del ${formatDate(visitDate)} (la del ${formatDate(orig.visitDate)} se conserva con sus comentarios y fotos).\n• Cancelar = cambiar la fecha de la visita del ${formatDate(orig.visitDate)}.`);
+      if(asNew){
+        if(JSON.stringify(formPhotos)===JSON.stringify(orig.photos||[])&&document.getElementById('f-notes').value.trim()===(orig.notes||'').trim()){
+          document.getElementById('f-notes').value='';formPhotos=[];renderPhotoGrid();
+          showToast('📝 Escribe los comentarios de hoy y vuelve a guardar');
+          document.getElementById('f-edit-id').value='';document.getElementById('edit-banner').style.display='none';
+          setSavedState(null);showHistory(bizOfVisit(orig));document.getElementById('f-notes').focus();return;
+        }
+        editId='';document.getElementById('f-edit-id').value='';
+      }
+    }
+  }
   const lat=parseFloat(document.getElementById('f-lat').value)||null;
   const lng=parseFloat(document.getElementById('f-lng').value)||null;
   let code=normCode(document.getElementById('f-code').value);
@@ -1548,6 +1638,7 @@ async function saveVisit(){
     photos:[...formPhotos],
     lat,lng,
     createdAt:editId?(visits.find(v=>v.id===editId)?.createdAt||Date.now()):Date.now(),
+    noVisit:(()=>{const r=findBizByCode(code);return bizNV(r&&r.biz)||undefined;})(),
     synced:false
   };
   // Bloqueo de duplicados: misma visita (cliente + fecha + notas + monto) ya registrada
@@ -1591,43 +1682,148 @@ function updatePendingBanner(){
 }
 
 // ── LIST ───────────────────────────────────────────────
+// ── PERÍODO DE LA LISTA DE VISITAS ──
+let period=null;
+function ymOf(d){return d.slice(0,7);}
+function monthBounds(ym){const[y,m]=ym.split('-').map(Number);const last=new Date(y,m,0).getDate();return{from:`${ym}-01`,to:`${ym}-${pad2(last)}`,last};}
+function monthName(ym){const[y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('es',{month:'long',year:'numeric'});}
+function shortDate(d){const[y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString('es',{day:'numeric',month:'short'});}
+function prevYm(ym){const[y,m]=ym.split('-').map(Number);const d=new Date(y,m-2,1);return`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;}
+function setPeriod(kind,from,to,label){
+  const cur=ymOf(todayStr());
+  if(kind==='month'){const b=monthBounds(cur);period={kind,from:b.from,to:b.to,label:monthName(cur)};}
+  else if(kind==='prev'){const pm=prevYm(cur),b=monthBounds(pm);period={kind,from:b.from,to:b.to,label:monthName(pm)};}
+  else if(kind==='all'){period={kind,from:'0000-01-01',to:'9999-12-31',label:'Todo el historial'};}
+  else period={kind:'custom',from,to,label};
+  document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('active',c.dataset.p===(kind==='all'?'custom':kind)));
+  renderList();
+}
+function openPeriodModal(){
+  const ym=period&&period.kind!=='all'?ymOf(period.from):prevYm(ymOf(todayStr()));
+  document.getElementById('pm-month').value=ym;
+  const b=monthBounds(ym);document.getElementById('pm-from').value=b.from;document.getElementById('pm-to').value=b.to;
+  updateQuickRanges();
+  document.getElementById('period-modal').classList.add('open');
+}
+function updateQuickRanges(){
+  const ym=document.getElementById('pm-month').value;if(!ym)return;
+  const b=monthBounds(ym);
+  const rs=[[1,10],[11,20],[21,b.last]];
+  document.getElementById('pm-quick').innerHTML=rs.map(([a,z])=>`<button class="pchip" style="flex:1;" onclick="applyRange('${ym}-${pad2(a)}','${ym}-${pad2(z)}')">Días ${a}–${z}</button>`).join('');
+}
+function applyMonth(){
+  const ym=document.getElementById('pm-month').value;if(!ym){showToast('⚠️ Elige un mes');return;}
+  const b=monthBounds(ym);document.getElementById('period-modal').classList.remove('open');
+  if(ym===ymOf(todayStr()))return setPeriod('month');
+  if(ym===prevYm(ymOf(todayStr())))return setPeriod('prev');
+  setPeriod('custom',b.from,b.to,monthName(ym));
+}
+function applyRange(f,t){
+  f=f||document.getElementById('pm-from').value;t=t||document.getElementById('pm-to').value;
+  if(!f||!t){showToast('⚠️ Elige las dos fechas');return;}
+  if(f>t)[f,t]=[t,f];
+  document.getElementById('period-modal').classList.remove('open');
+  setPeriod('custom',f,t,f===t?shortDate(f):`${shortDate(f)} al ${shortDate(t)} ${f.slice(0,4)}`);
+}
+
 function renderList(){
+  if(!period){period=null;setPeriod('month');return;}
   const q=(document.getElementById('search-input').value||'').toLowerCase();
   const tf=document.getElementById('filter-type').value;
   const sf=document.getElementById('filter-status').value;
-  const today=todayStr(),month=today.slice(0,7);
-  let bizs=getBusinesses().filter(b=>{
+  const today=todayStr();
+  const allDates=sf==='overdue'||sf==='scheduled';   // vencidos/programadas: se miran en todas las fechas
+  const inP=v=>allDates||((v.visitDate||'')>=period.from&&(v.visitDate||'')<=period.to);
+  let totalVisits=0;
+  let rows=getBusinesses().map(b=>{const pv=b.visits.filter(inP);return{b,pv,rep:pv[0]};}).filter(({b,pv,rep})=>{
+    if(!rep)return false;
     const v=b.last;
     const mq=!q||(v.name||'').toLowerCase().includes(q)||(v.city||'').toLowerCase().includes(q)||(v.code||'').toLowerCase().includes(q);
     const mt=!tf||v.type===tf;
-    const ms=!sf||(sf==='overdue'?(v.nextDate&&v.nextDate<today):sf==='scheduled'?(v.nextDate&&v.nextDate>=today):(v.status||'active')===sf);
+    const nv=bizNV(b);
+    const ms=!sf||(sf==='novisit'?!!nv:sf==='overdue'?(!nv&&v.nextDate&&v.nextDate<today):sf==='scheduled'?(!nv&&v.nextDate&&v.nextDate>=today):(v.status||'active')===sf);
     return mq&&mt&&ms;
   });
-  if(sf==='scheduled')bizs.sort((a,b)=>(a.last.nextDate+(a.last.nextTime||'99')).localeCompare(b.last.nextDate+(b.last.nextTime||'99')));
+  rows.forEach(r=>totalVisits+=r.pv.length);
+  if(sf==='scheduled')rows.sort((a,b)=>(a.b.last.nextDate+(a.b.last.nextTime||'99')).localeCompare(b.b.last.nextDate+(b.b.last.nextTime||'99')));
+  else rows.sort((a,b)=>vStamp(b.rep).localeCompare(vStamp(a.rep)));
+  document.getElementById('period-label').innerHTML=allDates
+    ?`Mostrando <b>${sf==='overdue'?'vencidos':'programadas'}</b> de todas las fechas · ${rows.length} negocio${rows.length!==1?'s':''}`
+    :`<b>${esc(period.label)}</b> · ${rows.length} negocio${rows.length!==1?'s':''} · ${totalVisits} visita${totalVisits!==1?'s':''}`;
   const el=document.getElementById('visits-list');
-  if(!bizs.length){el.innerHTML=`<div class="empty-state"><p>No hay visitas</p></div>`;return;}
-  el.innerHTML=bizs.map(b=>{
-    const v=b.last,n=b.visits.length,nm=b.visits.filter(x=>(x.visitDate||'').startsWith(month)).length;
-    const isOverdue=v.nextDate&&v.nextDate<today,isToday=v.nextDate===today;
-    const t=visitTimeOf(v);
-    return`<div class="visit-card is-${v.type}${isOverdue?' overdue':''}" onclick="openDetail('${v.id}')">
+  if(!rows.length){
+    el.innerHTML=`<div class="empty-state"><p>No hay visitas en ${esc(period.label)}</p>${period.kind!=='all'?`<button class="btn btn-outline" style="margin-top:10px;" onclick="setPeriod('all')">Buscar en todo el historial</button>`:''}</div>`;return;}
+  el.innerHTML=rows.map(({b,pv,rep})=>{
+    const v=b.last,n=b.visits.length,np=pv.length,nv=bizNV(b);
+    const isOverdue=!nv&&v.nextDate&&v.nextDate<today,isToday=v.nextDate===today;
+    const t=visitTimeOf(rep);
+    return`<div class="visit-card is-${v.type}${isOverdue?' overdue':''}${nv?' novisit':''}" onclick="openDetail('${rep.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
         <div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--navy);">${esc(v.name)}</div>${v.city?`<div style="font-size:10px;color:var(--gray-600);margin-top:1px;">📍 ${esc(v.city)}</div>`:''}</div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;">
           ${v.code?`<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--gold);background:var(--gold-pale);padding:2px 6px;border-radius:3px;">${esc(v.code)}</span>`:''}
-          <span class="badge badge-${v.type}" style="font-size:9px;">${v.type==='client'?'Cliente':'Lead'}</span>
+          ${nv?`<span class="nv-badge">🚫 NO VISITAR</span>`:`<span class="badge badge-${v.type}" style="font-size:9px;">${v.type==='client'?'Cliente':'Lead'}</span>`}
           ${isOverdue?`<span class="badge badge-overdue" style="font-size:9px;">⚠️ Vencido</span>`:''}
-          ${v.amount?`<span style="font-size:10px;color:var(--success);font-weight:600;">$${parseFloat(v.amount).toLocaleString()}</span>`:''}
+          ${rep.amount?`<span style="font-size:10px;color:var(--success);font-weight:600;">$${parseFloat(rep.amount).toLocaleString()}</span>`:''}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span style="font-size:10px;color:var(--gray-600);">📅 Última: ${formatDate(v.visitDate)}${t?' · '+fmtTime(t):''}${(v.photos||[]).length?` · 📷 ${v.photos.length}`:''}</span>
-        ${n>1?`<span class="visit-count">🔁 ${n} visitas${nm>1?` · ${nm} este mes`:''}</span>`:''}
+        <span style="font-size:10px;color:var(--gray-600);">📅 ${allDates||rep===v?'Última':'Visita'}: ${formatDate(rep.visitDate)}${t?' · '+fmtTime(t):''}${(rep.photos||[]).length?` · 📷 ${rep.photos.length}`:''}</span>
+        ${n>1?`<span class="visit-count">🔁 ${allDates?n+' visitas':np+' en el período · '+n+' en total'}</span>`:''}
       </div>
-      ${v.nextDate?`<div style="font-size:10.5px;color:${isOverdue?'var(--danger)':'var(--success)'};font-weight:700;margin-top:2px;">🗓 ${isToday?'HOY · ':''}${fmtNext(v)}${isOverdue?' ⚠️':''}</div>`:''}
-      ${v.notes?`<div style="font-size:11px;color:var(--gray-600);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💬 ${esc(v.notes)}</div>`:''}
+      ${nv?`<div style="font-size:10.5px;color:#b42318;font-weight:700;margin-top:3px;">${NV_REASONS[nv.reason]||''} · desde ${formatDate(nv.date)}</div>`:v.nextDate?`<div style="font-size:10.5px;color:${isOverdue?'var(--danger)':'var(--success)'};font-weight:700;margin-top:2px;">🗓 ${isToday?'HOY · ':''}${fmtNext(v)}${isOverdue?' ⚠️':''}</div>`:''}
+      ${rep.notes?`<div style="font-size:11px;color:var(--gray-600);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💬 ${esc(rep.notes)}</div>`:''}
     </div>`;
   }).join('');
+}
+
+// ── NO VISITAR ──
+const NV_REASONS={won:'✅ Ya es cliente (captado)',discarded:'❌ No me sirve / descartado',other:'📝 Otro motivo'};
+function bizNV(b){if(!b)return null;const v=b.visits.find(x=>x.noVisit);return v?v.noVisit:null;}
+let nvTargetId=null,nvReason=null;
+function openNoVisit(id){
+  const v=visits.find(x=>x.id===id);if(!v)return;
+  nvTargetId=id;nvReason=null;
+  document.querySelectorAll('.nv-opt').forEach(o=>o.classList.remove('sel'));
+  document.getElementById('nv-note').value='';
+  document.getElementById('nv-name').textContent=`${v.code?v.code+' · ':''}${v.name}`;
+  document.getElementById('nv-modal').classList.add('open');
+}
+function pickNvReason(el){nvReason=el.dataset.r;document.querySelectorAll('.nv-opt').forEach(o=>o.classList.toggle('sel',o===el));}
+async function setBizNoVisit(visitId,flag){
+  const v=visits.find(x=>x.id===visitId);if(!v)return;
+  const b=bizOfVisit(v);const ids=[];
+  b.visits.forEach(x=>{if(flag)x.noVisit=flag;else delete x.noVisit;x.synced=false;ids.push(x.id);if(!pendingSync.includes(x.id))pendingSync.push(x.id);});
+  await save(ids);
+  renderList();updateOverdueBanner();updatePendingBanner();
+  if(typeof renderMapMarkers==='function')try{renderMapMarkers();}catch(e){}
+}
+async function confirmNoVisit(){
+  if(!nvReason){showToast('⚠️ Elige un motivo');return;}
+  const flag={reason:nvReason,note:document.getElementById('nv-note').value.trim(),date:todayStr()};
+  await setBizNoVisit(nvTargetId,flag);
+  document.getElementById('nv-modal').classList.remove('open');
+  showToast('🚫 Marcado como NO VISITAR');
+  openDetail(nvTargetId);
+}
+async function reactivateBiz(id){
+  if(!confirm('¿Reactivar este negocio para volver a visitarlo?'))return;
+  await setBizNoVisit(id,null);showToast('↩ Negocio reactivado');
+  if(document.getElementById('detail-modal').classList.contains('open'))openDetail(id);
+  if(document.getElementById('nv-form-banner'))refreshFormNV();
+}
+function nvBoxHtml(nv,id){
+  return`<div class="nv-box"><b>🚫 NO VISITAR</b> · ${NV_REASONS[nv.reason]||''}<br>
+    Marcado el ${formatDate(nv.date)}${nv.note?`<br>💬 ${esc(nv.note)}`:''}
+    ${id?`<div style="margin-top:7px;"><button class="btn btn-outline" style="padding:6px 12px;font-size:11.5px;" onclick="reactivateBiz('${id}')">↩ Reactivar</button></div>`:''}</div>`;
+}
+function refreshFormNV(){
+  const box=document.getElementById('nv-form-banner');if(!box)return;
+  const code=document.getElementById('f-code').value,name=document.getElementById('f-name').value;
+  let b=null;const r=code?findBizByCode(code):null;b=r&&r.biz?r.biz:(name?findBizByName(name):null);
+  const nv=bizNV(b);
+  if(nv){box.style.display='block';box.innerHTML=nvBoxHtml(nv,b.last.id).replace('<b>🚫 NO VISITAR</b>','<b>🚫 Este negocio está marcado NO VISITAR</b>')+'';}
+  else box.style.display='none';
 }
 
 // ── DETAIL MODAL ───────────────────────────────────────
@@ -1637,7 +1833,8 @@ function openDetail(id){
   const ae=encodeURIComponent((v.address||'')+(v.city?' '+v.city:''));
   const statusMap={active:'✅ Activo',inactive:'⬜ Inactivo',atrisk:'⚠️ En riesgo'};
   const today=todayStr();
-  const isOverdue=v.nextDate&&v.nextDate<today;
+  const nv=bizNV(biz);
+  const isOverdue=!nv&&v.nextDate&&v.nextDate<today;
   document.getElementById('modal-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px;">
       <div><div style="font-size:16px;font-weight:700;color:var(--navy);">${v.name}</div>${v.code?`<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-top:2px;">${v.code}</div>`:''}</div>
@@ -1646,7 +1843,9 @@ function openDetail(id){
         ${v.status?`<span style="font-size:11px;color:var(--gray-600);">${statusMap[v.status]||''}</span>`:''}
       </div>
     </div>
+    ${nv?nvBoxHtml(nv,v.id):''}
     <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="startVisitFor('${v.id}')">➕ Registrar visita de hoy</button>
+    ${nv?'':`<button class="btn" style="width:100%;margin:-4px 0 10px;background:#fff3f2;color:#b42318;border:1.5px solid #e3a3a3;font-size:12.5px;" onclick="openNoVisit('${v.id}')">🚫 No visitar más</button>`}
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       ${v.lead?`<tr><td style="padding:5px 0;color:var(--gray-600);width:36%;">Lead/Ref</td><td style="padding:5px 0;font-weight:500;">${v.lead}</td></tr>`:''}
       ${v.address?`<tr><td style="padding:5px 0;color:var(--gray-600);">Dirección</td><td style="padding:5px 0;">${v.address}</td></tr>`:''}
@@ -1710,7 +1909,10 @@ function editVisit(id){
   document.getElementById('f-edit-id').value=v.id;
   if(v.lat){document.getElementById('f-lat').value=v.lat;document.getElementById('f-lng').value=v.lng;document.getElementById('geo-status-text').textContent=`✅ ${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}`;}
   setSavedState(null);formPhotos=[...(v.photos||[])];renderPhotoGrid();
-  showHistory(bizOfVisit(v),v.id);const h=document.getElementById('code-hint');h.className='code-hint found';h.textContent=`✏️ Editando visita del ${formatDate(v.visitDate)}`;
+  showHistory(bizOfVisit(v),v.id);document.getElementById('code-hint').textContent='';
+  const eb=document.getElementById('edit-banner');eb.style.display='block';
+  eb.innerHTML=`✏️ <b>Estás corrigiendo la visita del ${formatDate(v.visitDate)}.</b> Lo que guardes aquí reemplaza esa visita.<br><a href="#" onclick="startVisitFor('${v.id}');return false;" style="color:var(--navy);font-weight:700;">¿Querías registrar una visita nueva? Toca aquí →</a>`;
+  document.getElementById('save-btn').textContent='💾 Guardar cambios de esta visita';
   checkLead();document.querySelectorAll('.nav-tab')[0].click();window.scrollTo(0,0);
 }
 
