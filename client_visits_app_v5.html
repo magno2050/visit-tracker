@@ -239,7 +239,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pchip{border:1.5px solid var(--gray-200);background:var(--white);color:var(--navy);border-radius:16px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
 .pchip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
 .period-label{font-size:11px;color:var(--gray-600);margin-top:6px;}
-.period-label b{color:var(--navy);text-transform:capitalize;}
+.period-label b{color:var(--navy);}
 
 .visit-card.novisit{border:1.5px solid #e3a3a3;border-left:5px solid #b42318;background:#fff3f2;}
 .visit-card.novisit .nv-badge{display:inline-block;}
@@ -248,6 +248,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .nv-box b{font-size:13px;}
 .nv-opt{display:block;width:100%;text-align:left;border:1.5px solid var(--gray-200);background:var(--white);border-radius:10px;padding:11px 12px;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;}
 .nv-opt.sel{border-color:#b42318;background:#fff3f2;}
+
+.st-chip{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;cursor:pointer;border:none;font-family:inherit;}
+.st-done{background:#e6f5ec;color:#16653a;}
+.st-pend{background:#fff4dc;color:#8a5a12;}
+.progress{height:6px;border-radius:4px;background:var(--gray-100);overflow:hidden;margin-top:5px;}
+.progress>div{height:100%;background:#1a7a4a;}
+.thumb{position:relative;width:100%;height:140px;overflow:hidden;border-radius:8px;margin:8px 0 4px;background:#e8eef4;}
+.thumb .tiles{position:absolute;left:50%;top:0;width:300px;height:140px;margin-left:-150px;}
+.thumb .tiles img{position:absolute;width:256px;height:256px;max-width:none;filter:saturate(.75);}
+.thumb svg{position:absolute;left:50%;top:0;margin-left:-150px;}
+.thumb .attr{position:absolute;right:3px;bottom:1px;font-size:8px;color:#555;background:rgba(255,255,255,.7);padding:0 3px;border-radius:2px;}
 
 /* STATUS SELECTOR */
 .status-pills{display:flex;gap:6px;flex-wrap:wrap;}
@@ -498,11 +509,12 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
     <div class="route-panel" id="route-panel">
       <div class="panel-handle" onclick="toggleRoutePanel()"></div>
       <div class="view-banner" id="view-banner"></div>
+      <div id="route-title" style="display:flex;align-items:center;gap:8px;margin-bottom:9px;"></div>
       <div id="route-edit-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="nearby-title" style="margin-bottom:0;">Paradas (<span id="stop-count">0</span>/20)</div>
         <div style="display:flex;gap:6px;">
           <button class="map-btn mbtn-gold" onclick="openAddStop()" style="font-size:11px;padding:5px 10px;">+ Parada</button>
-          <button class="map-btn" style="background:var(--danger-bg);color:var(--danger);font-size:11px;padding:5px 10px;" onclick="clearRoute()">🗑 Limpiar</button>
+          <button class="map-btn mbtn-dark" style="font-size:11px;padding:5px 10px;" onclick="newRoute()">➕ Nueva ruta</button>
         </div>
       </div>
       <div class="plan-card" id="plan-card" style="display:none;"></div>
@@ -647,7 +659,8 @@ input[type="time"]:disabled{background:var(--gray-50);color:var(--gray-400);}
   <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <div class="card-title">📂 Rutas guardadas</div>
-    <div style="font-size:11px;color:var(--gray-600);margin:4px 0 10px;">Se guardan las últimas 20 rutas. Cada ruta se guarda sola al optimizarla o al iniciarla.</div>
+    <div style="font-size:11px;color:var(--gray-600);margin:4px 0 10px;">Se guardan hasta 20 rutas. Cada cambio se guarda solo en la ruta abierta.</div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:12px;" onclick="newRoute()">➕ Crear nueva ruta</button>
     <div id="saved-list"></div>
   </div>
 </div>
@@ -691,6 +704,7 @@ let routeStops=JSON.parse(localStorage.getItem('pm_route_stops')||'[]');
 let routeCfg=JSON.parse(localStorage.getItem('mb_route_cfg')||'null')||{start:'gps',end:'free',confirmed:false};
 let savedRoutes=JSON.parse(localStorage.getItem('mb_saved_routes')||'[]');
 let currentRouteId=localStorage.getItem('mb_cur_route_id')||null;
+let curRouteMeta=JSON.parse(localStorage.getItem('mb_cur_route_meta')||'null')||(()=>{const r=savedRoutes.find(x=>x.id===currentRouteId);return r?{name:r.name||'',date:r.date||todayStr()}:{name:'',date:todayStr()};})();
 let viewingRoute=null;   // ruta guardada que se está consultando (solo lectura)
 const MAX_SAVED_ROUTES=20;
 let dailyGoal=parseInt(localStorage.getItem('pm_daily_goal')||'8');
@@ -1150,7 +1164,7 @@ function pushStopFromBiz(biz,silent){
     address:[v.address,v.city].filter(Boolean).join(', '),lat:biz.lat,lng:biz.lng,nextTime:v.nextDate===todayStr()?(v.nextTime||''):''});
   return true;
 }
-function afterStopsChanged(){routeCfg.confirmed=false;saveRoute();renderStops();renderRouteMap();geocodeStops();}
+function afterStopsChanged(){routeCfg.confirmed=false;saveRoute();saveRouteToHistory(true,true);renderStops();renderRouteMap();geocodeStops();}
 function quickAddStop(id){
   const v=visits.find(x=>x.id===id);if(!v)return;
   if(pushStopFromBiz(bizOfVisit(v))){afterStopsChanged();renderQuickAdd();showToast(`✅ ${v.name} agregado`);}
@@ -1224,7 +1238,7 @@ function routeMiles(pts){let d=0;for(let i=0;i<pts.length-1;i++)d+=hav(pts[i].la
 
 // Planificador
 function openPlanner(){
-  if(viewingRoute){showToast('Toca "▶ Usar esta ruta" para planearla');return;}
+  if(viewingRoute){showToast('Toca "▶ Abrir esta ruta" para planearla');return;}
   if(!routeStops.length){showToast('⚠️ Primero agrega paradas');openAddStop();return;}
   const opts=(isEnd)=>{
     let h=isEnd?`<option value="free">🏁 En la última parada (sin regresar)</option><option value="gps">📍 Regresar a mi ubicación actual</option>`
@@ -1314,7 +1328,72 @@ function navigateRoute(){
 function removeStop(id){
   if(viewingRoute)return;
   routeStops=routeStops.filter(s=>s.id!==id);
-  saveRoute();renderStops();renderRouteMap();
+  saveRoute();saveRouteToHistory(true,true);renderStops();renderRouteMap();
+}
+
+// ── Visitado / pendiente por parada ──
+function dateOfTs(ts){const d=new Date(ts);return`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;}
+function curRouteObj(){return{id:currentRouteId,date:curRouteMeta.date,savedAt:Date.now(),stops:routeStops,cfg:routeCfg,gps:myLat?{lat:myLat,lng:myLng}:null,name:curRouteMeta.name,_open:true};}
+function dispRoute(){return viewingRoute||curRouteObj();}
+function routeWindow(r){
+  const from=r.date||todayStr();
+  const to=(r._open||r.id===currentRouteId&&!viewingRoute)?todayStr():(r.savedAt?dateOfTs(r.savedAt):from);
+  return{from,to:to<from?from:to};
+}
+function stopBiz(s){
+  const v=s.visitId&&visits.find(x=>x.id===s.visitId);if(v)return bizOfVisit(v);
+  if(s.code){const r=findBizByCode(s.code);return r.biz;}return null;
+}
+function stopStatus(s,win){
+  if(s.mark==='done')return{done:true,manual:true};
+  const b=stopBiz(s);if(!b)return{done:false};
+  const hit=b.visits.filter(x=>x.visitDate>=win.from&&x.visitDate<=win.to).sort((a,c)=>vStamp(c).localeCompare(vStamp(a)))[0];
+  return hit?{done:true,visit:hit}:{done:false};
+}
+function routeProgress(r){const win=routeWindow(r);let d=0;r.stops.forEach(s=>{if(stopStatus(s,win).done)d++;});return{done:d,total:r.stops.length,pend:r.stops.length-d};}
+function toggleStopDone(id){
+  const r=dispRoute(),st=r.stops.find(x=>x.id===id);if(!st)return;
+  const cur=stopStatus(st,routeWindow(r));
+  if(cur.done&&!cur.manual){showToast('✅ Ya tiene una visita registrada ese día');return;}
+  if(st.mark==='done')delete st.mark;else st.mark='done';
+  if(viewingRoute)persistSaved();else{saveRoute();saveRouteToHistory(true,true);}
+  renderStops();renderRouteMap();
+  showToast(st.mark==='done'?'✅ Marcado como visitado':'⏳ Marcado como pendiente');
+}
+function progressHtml(pr){
+  if(!pr.total)return'';
+  return`<div class="plan-row" style="font-size:11.5px;"><b style="color:#16653a;">✅ ${pr.done} visitado${pr.done!==1?'s':''}</b> · <b style="color:#8a5a12;">⏳ ${pr.pend} pendiente${pr.pend!==1?'s':''}</b></div>
+    <div class="progress"><div style="width:${Math.round(pr.done/pr.total*100)}%;"></div></div>`;
+}
+// ── Miniatura del mapa de la ruta (imagen de referencia) ──
+function lon2x(lon,z){return(lon+180)/360*256*Math.pow(2,z);}
+function lat2y(lat,z){const r=lat*Math.PI/180;return(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*Math.pow(2,z);}
+function routeThumbHtml(r){
+  const W=300,H=140,win=routeWindow(r);
+  const stops=r.stops.map((st,i)=>({st,i})).filter(o=>o.st.lat&&o.st.lng);
+  const gps=r.gps&&(r.cfg.start==='gps'||r.cfg.end==='gps')?r.gps:null;
+  const all=[...stops.map(o=>[o.st.lat,o.st.lng]),...(gps?[[gps.lat,gps.lng]]:[])];
+  if(!all.length)return'';
+  const lats=all.map(a=>a[0]),lngs=all.map(a=>a[1]);
+  const mnLa=Math.min(...lats),mxLa=Math.max(...lats),mnLo=Math.min(...lngs),mxLo=Math.max(...lngs);
+  let z=15;while(z>3&&((lon2x(mxLo,z)-lon2x(mnLo,z))>W-50||(lat2y(mnLa,z)-lat2y(mxLa,z))>H-40))z--;
+  const cx=(lon2x(mnLo,z)+lon2x(mxLo,z))/2,cy=(lat2y(mnLa,z)+lat2y(mxLa,z))/2,x0=cx-W/2,y0=cy-H/2,n=Math.pow(2,z);
+  let tiles='';
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){
+    if(ty<0||ty>=n)continue;const wx=((tx%n)+n)%n;
+    tiles+=`<img loading="lazy" alt="" src="https://tile.openstreetmap.org/${z}/${wx}/${ty}.png" style="left:${tx*256-x0}px;top:${ty*256-y0}px;">`;
+  }
+  const P=(la,lo)=>[lon2x(lo,z)-x0,lat2y(la,z)-y0];
+  const seq=[];if(r.cfg.start==='gps'&&gps)seq.push(P(gps.lat,gps.lng));
+  stops.forEach(o=>seq.push(P(o.st.lat,o.st.lng)));
+  if(r.cfg.end==='gps'&&gps)seq.push(P(gps.lat,gps.lng));
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  if(seq.length>1)svg+=`<polyline points="${seq.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#0a1630" stroke-width="2.5" stroke-dasharray="5,4" opacity=".75"/>`;
+  if(gps){const g=P(gps.lat,gps.lng);svg+=`<circle cx="${g[0]}" cy="${g[1]}" r="5" fill="#2563eb" stroke="#fff" stroke-width="2"/>`;}
+  stops.forEach(o=>{const[x,y]=P(o.st.lat,o.st.lng);const d=stopStatus(o.st,win).done;
+    svg+=`<circle cx="${x}" cy="${y}" r="8" fill="${d?'#1a7a4a':'#d4a544'}" stroke="#fff" stroke-width="2"/><text x="${x}" y="${y+3.3}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="DM Mono,monospace">${d?'✓':o.i+1}</text>`;});
+  svg+='</svg>';
+  return`<div class="thumb"><div class="tiles">${tiles}</div>${svg}<span class="attr">© OpenStreetMap</span></div>`;
 }
 
 function renderPlanCard(){
@@ -1326,6 +1405,7 @@ function renderPlanCard(){
   card.innerHTML=`<div class="plan-row"><span class="plan-dot" style="background:#1a7a4a;"></span>Inicio: <b>${esc(cfgLabel(cfg.start,cfg,list,false))}</b>${viewingRoute?'':'<button class="plan-change" onclick="openPlanner()">Cambiar</button>'}</div>
     <div class="plan-row"><span class="plan-dot" style="background:#c0392b;"></span>Fin: <b>${esc(cfgLabel(cfg.end,cfg,list,true))}</b></div>
     ${mi>0?`<div class="plan-row" style="color:var(--gray-600);font-size:11px;">🛣 Recorrido aproximado: ${mi.toFixed(1)} millas</div>`:''}
+    ${progressHtml(routeProgress(dispRoute()))}
     ${!viewingRoute&&!routeCfg.confirmed?`<div class="plan-row" style="color:var(--gold);font-size:11px;font-weight:700;">Toca ⚡ Optimizar para elegir inicio y fin</div>`:''}`;
 }
 
@@ -1335,24 +1415,29 @@ function renderStops(){
   document.getElementById('route-edit-bar').style.display=ro?'none':'flex';
   document.getElementById('route-actions').style.display=(!ro&&list.length)?'flex':'none';
   const vb=document.getElementById('view-banner');
-  if(ro){vb.classList.add('show');vb.innerHTML=`👁 <b>Consultando:</b> <span style="text-transform:capitalize;">${esc(routeDayLabel(viewingRoute))}</span> · ${list.length} paradas
-      <div style="display:flex;gap:6px;margin-top:7px;"><button class="btn btn-primary" style="flex:1;padding:7px;font-size:11.5px;" onclick="useSavedRoute('${viewingRoute.id}')">▶ Usar esta ruta</button><button class="btn btn-outline" style="flex:1;padding:7px;font-size:11.5px;" onclick="closeViewRoute()">✕ Cerrar</button></div>`;}
+  if(ro){vb.classList.add('show');vb.innerHTML=`👁 <b>${esc(routeName(viewingRoute))}</b><br><span style="font-size:11px;">Creada: ${esc(routeDayLabel(viewingRoute))} · ${list.length} paradas</span>
+      <div style="display:flex;gap:6px;margin-top:7px;"><button class="btn btn-primary" style="flex:1;padding:7px;font-size:11.5px;" onclick="openRoute('${viewingRoute.id}')">▶ Abrir esta ruta</button><button class="btn btn-outline" style="flex:1;padding:7px;font-size:11.5px;" onclick="closeViewRoute()">✕ Cerrar</button></div>`;}
   else vb.classList.remove('show');
-  renderPlanCard();
+  renderPlanCard();renderRouteTitle();
   if(!list.length){el.innerHTML='<div class="empty-state" style="padding:16px;"><p style="font-size:12px;">Agrega paradas para planear tu ruta</p></div>';
     document.getElementById('route-subtitle').textContent='Agrega paradas abajo';return;}
+  const win=routeWindow(dispRoute());
   el.innerHTML=list.map((s,i)=>{
+    const st=stopStatus(s,win);
+    const chip=st.done
+      ?`<button class="st-chip st-done" onclick="toggleStopDone('${s.id}')">✅ Visitado${st.visit?` ${formatDate(st.visit.visitDate)}${visitTimeOf(st.visit)?' · '+fmtTime(visitTimeOf(st.visit)):''}`:' (marcado a mano)'}</button>`
+      :`<button class="st-chip st-pend" onclick="toggleStopDone('${s.id}')">⏳ Pendiente · tocar para marcar visitado</button>`;
     const tag=s.id===cfg.start?'<span style="font-size:9px;color:#1a7a4a;font-weight:800;margin-left:4px;">INICIO</span>':s.id===cfg.end?'<span style="font-size:9px;color:#c0392b;font-weight:800;margin-left:4px;">FIN</span>':'';
     return`<div class="stop-item">
-      <div class="stop-num" style="${s.id===cfg.start?'background:#1a7a4a;':s.id===cfg.end?'background:#c0392b;':''}">${i+1}</div>
-      <div class="stop-info"><div class="stop-name">${s.code?`<span class="stop-code">${esc(s.code)}</span>`:''}${esc(s.name)}${tag}${s.nextTime&&!ro?` <span style="font-size:10px;color:var(--success);font-weight:700;">🕐 ${fmtTime(s.nextTime)}</span>`:''}</div><div class="stop-addr">${esc(s.address)}${s.lat?'':' <span style="color:var(--warning);">· sin ubicación</span>'}</div></div>
+      <div class="stop-num" style="${st.done?'background:#1a7a4a;':s.id===cfg.start?'background:#0f5132;':s.id===cfg.end?'background:#c0392b;':''}">${st.done?'✓':i+1}</div>
+      <div class="stop-info"><div class="stop-name">${s.code?`<span class="stop-code">${esc(s.code)}</span>`:''}${esc(s.name)}${tag}${s.nextTime&&!ro?` <span style="font-size:10px;color:var(--success);font-weight:700;">🕐 ${fmtTime(s.nextTime)}</span>`:''}</div><div class="stop-addr">${esc(s.address)}${s.lat?'':' <span style="color:var(--warning);">· sin ubicación</span>'}</div>${chip}</div>
       <div style="display:flex;gap:5px;flex-shrink:0;">
         <a href="https://maps.google.com/?q=${encodeURIComponent(s.address)}" target="_blank" style="padding:4px 7px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;background:#4285F4;color:white;">G</a>
         <a href="https://waze.com/ul?q=${encodeURIComponent(s.address)}" target="_blank" style="padding:4px 7px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;background:#33ccaa;color:white;">W</a>
         ${ro?'':`<button onclick="removeStop('${s.id}')" style="padding:4px 7px;border-radius:5px;font-size:10px;font-weight:700;background:var(--danger-bg);color:var(--danger);border:none;cursor:pointer;">✕</button>`}
       </div>
     </div>`;}).join('');
-  document.getElementById('route-subtitle').textContent=ro?'Consultando ruta guardada':`${list.length} parada${list.length!==1?'s':''}`;
+  document.getElementById('route-subtitle').textContent=ro?'Consultando ruta guardada':`${routeName(curRouteMeta)} · ${list.length} parada${list.length!==1?'s':''}`;
 }
 
 async function geocodeStops(){
@@ -1384,9 +1469,10 @@ function renderRouteMap(){
   }
   list.forEach((s,i)=>{
     if(!s.lat||!s.lng)return;
-    const color=s.id===cfg.start?'#1a7a4a':s.id===cfg.end?'#c0392b':'#c8923a';
+    const done=stopStatus(s,routeWindow(dispRoute())).done;
+    const color=done?'#1a7a4a':s.id===cfg.start?'#0f5132':s.id===cfg.end?'#c0392b':'#c8923a';
     const ae=encodeURIComponent(s.address||'');
-    const m=L.marker([s.lat,s.lng],{icon:dotIcon(color,i+1,20)}).addTo(routeMap);
+    const m=L.marker([s.lat,s.lng],{icon:dotIcon(color,done?'✓':i+1,20)}).addTo(routeMap);
     m.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:150px;">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;">${i+1}. ${esc(s.name)}${s.code?` <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);">(${esc(s.code)})</span>`:''}</div>
       <div style="font-size:11px;color:var(--gray-600);margin-bottom:6px;">📍 ${esc(s.address||'')}</div>
@@ -1409,48 +1495,91 @@ function toggleRoutePanel(){
   setTimeout(()=>routeMap&&routeMap.invalidateSize(),350);
 }
 
-function clearRoute(){
-  if(!routeStops.length)return;
-  if(!confirm('¿Limpiar la ruta actual? Se guardará en "📂 Rutas" para que puedas consultarla después.'))return;
-  saveRouteToHistory(true);
-  routeStops=[];routeCfg={start:'gps',end:'free',confirmed:false};currentRouteId=null;localStorage.removeItem('mb_cur_route_id');
-  saveRoute();renderStops();renderRouteMap();showToast('🗑 Ruta limpiada — guardada en 📂 Rutas');
-}
-
-// ── HISTORIAL DE RUTAS ──
+// ── RUTAS: varias rutas con nombre y fecha ──
+function persistCurMeta(){try{localStorage.setItem('mb_cur_route_meta',JSON.stringify(curRouteMeta));if(currentRouteId)localStorage.setItem('mb_cur_route_id',currentRouteId);else localStorage.removeItem('mb_cur_route_id');}catch(e){}}
 function routeDayLabel(r){
   const [y,m,d]=(r.date||todayStr()).split('-').map(Number);
-  return new Date(y,m-1,d).toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short'});
+  return new Date(y,m-1,d).toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
 }
+function routeName(r){return r&&r.name?r.name:'Ruta sin nombre';}
 function persistSaved(){try{localStorage.setItem('mb_saved_routes',JSON.stringify(savedRoutes));}catch(e){showToast('⚠️ No se pudo guardar el historial');}}
-function saveRouteToHistory(silent){
-  if(viewingRoute||!routeStops.length){if(!silent)showToast('No hay paradas para guardar');return;}
-  if(!currentRouteId){currentRouteId=Date.now().toString();localStorage.setItem('mb_cur_route_id',currentRouteId);}
+function saveRouteToHistory(silent,allowEmpty){
+  if(viewingRoute){return;}
+  if(!routeStops.length&&!allowEmpty){if(!silent)showToast('No hay paradas para guardar');return;}
+  if(!currentRouteId){currentRouteId=Date.now().toString();}
+  if(!curRouteMeta.date)curRouteMeta.date=todayStr();
+  persistCurMeta();
   const old=savedRoutes.find(r=>r.id===currentRouteId);
-  const entry={id:currentRouteId,date:old?old.date:todayStr(),savedAt:Date.now(),name:old&&old.name||'',
+  const entry={id:currentRouteId,date:curRouteMeta.date,savedAt:Date.now(),name:curRouteMeta.name||'',
     stops:JSON.parse(JSON.stringify(routeStops)),cfg:{start:routeCfg.start,end:routeCfg.end},
     gps:myLat?{lat:myLat,lng:myLng}:(old&&old.gps||null)};
   savedRoutes=[entry,...savedRoutes.filter(r=>r.id!==currentRouteId)].slice(0,MAX_SAVED_ROUTES);
   persistSaved();
-  if(!silent)showToast('💾 Ruta guardada en 📂 Rutas');
+  if(!silent)showToast('💾 Ruta guardada');
+}
+function renderRouteTitle(){
+  const el=document.getElementById('route-title');if(!el)return;
+  if(viewingRoute){el.style.display='none';return;}
+  el.style.display='flex';
+  el.innerHTML=`<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🧭 ${esc(routeName(curRouteMeta))}</div>
+    <div style="font-size:10.5px;color:var(--gray-600);">Creada: ${esc(routeDayLabel(curRouteMeta))}</div></div>
+    <button class="map-btn" style="background:var(--gray-100);color:var(--navy);font-size:11px;padding:5px 9px;" onclick="renameCurrentRoute()">✏️ Nombre</button>`;
+}
+function askRouteName(def){
+  const n=prompt('Nombre de la ruta (ej. "Ruta Dayton" o "Martes Cincinnati"):',def||'');
+  return n===null?null:(n.trim()||def||'');
+}
+function newRoute(){
+  if(viewingRoute)closeViewRoute();
+  const name=askRouteName(`Ruta ${shortDate(todayStr())}`);if(name===null)return;
+  if(routeStops.length)saveRouteToHistory(true);
+  routeStops=[];routeCfg={start:'gps',end:'free',confirmed:false};
+  currentRouteId=Date.now().toString();curRouteMeta={name,date:todayStr()};
+  saveRoute();saveRouteToHistory(true,true);
+  document.getElementById('saved-modal').classList.remove('open');
+  document.getElementById('route-panel').classList.remove('collapsed');
+  renderStops();renderRouteMap();
+  showToast(`➕ Nueva ruta: ${name}`);
+  setTimeout(openAddStop,400);
+}
+function renameCurrentRoute(){
+  const n=askRouteName(curRouteMeta.name);if(n===null)return;
+  curRouteMeta.name=n;persistCurMeta();
+  if(savedRoutes.find(r=>r.id===currentRouteId))saveRouteToHistory(true,true);
+  renderRouteTitle();showToast('✏️ Nombre actualizado');
+}
+function clearRoute(){ // se mantiene por compatibilidad
+  if(!routeStops.length)return;
+  saveRouteToHistory(true);routeStops=[];saveRoute();renderStops();renderRouteMap();
+}
+function refreshStopsFromBiz(stops){
+  return stops.map(s=>{const c={...s};
+    const v=s.visitId&&visits.find(x=>x.id===s.visitId);const b=v&&bizOfVisit(v);
+    if(b){c.visitId=b.last.id;c.name=b.last.name;c.address=[b.last.address,b.last.city].filter(Boolean).join(', ')||c.address;if(b.lat){c.lat=b.lat;c.lng=b.lng;}c.nextTime=b.last.nextDate===todayStr()?(b.last.nextTime||''):'';}
+    return c;});
 }
 function openSavedRoutes(){
   const el=document.getElementById('saved-list');
-  if(!savedRoutes.length){el.innerHTML='<div class="empty-state" style="padding:18px;"><p style="font-size:12px;">Todavía no tienes rutas guardadas.<br>Arma una ruta y tócala ⚡ Optimizar: se guarda sola.</p></div>';}
+  if(!savedRoutes.length){el.innerHTML='<div class="empty-state" style="padding:18px;"><p style="font-size:12px;">Todavía no tienes rutas guardadas.</p></div>';}
   else el.innerHTML=savedRoutes.map(r=>{
-    const path=r.stops.map(s=>esc(s.name)).join(' → ');
+    const rr=r.id===currentRouteId&&!viewingRoute?{...curRouteObj(),date:r.date}:r;
+    const win=routeWindow(rr),pr=routeProgress(rr);
+    const path=rr.stops.length?rr.stops.map(s=>`${stopStatus(s,win).done?'✅':'⏳'} ${esc(s.name)}`).join(' → '):'<i style="color:var(--gray-400);">Sin paradas todavía</i>';
     const cur=r.id===currentRouteId&&!viewingRoute;
-    return`<div class="saved-item" style="${cur?'border-color:var(--gold);':''}">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="si-day">${esc(routeDayLabel(r))}${cur?' <span style="font-size:9px;color:var(--gold);">· ACTUAL</span>':''}</div>
+    return`<div class="saved-item" style="${cur?'border-color:var(--gold);background:#fffaf1;':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <div style="min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--navy);">${esc(routeName(r))}${cur?' <span style="font-size:9px;color:var(--gold);font-weight:800;">· ABIERTA</span>':''}</div>
+        <div class="si-meta" style="text-transform:none;">Creada: ${esc(routeDayLabel(r))}</div></div>
         <button onclick="renameSavedRoute('${r.id}')" style="border:none;background:none;font-size:13px;cursor:pointer;">✏️</button>
       </div>
-      ${r.name?`<div style="font-size:12px;font-weight:600;color:var(--gold);">${esc(r.name)}</div>`:''}
-      <div class="si-meta">${r.stops.length} parada${r.stops.length!==1?'s':''} · Inicio: ${esc(cfgLabel(r.cfg.start,r.cfg,r.stops,false))} · Fin: ${esc(cfgLabel(r.cfg.end,r.cfg,r.stops,true))}</div>
+      <div class="si-meta">${r.stops.length} parada${r.stops.length!==1?'s':''}${r.stops.length?` · Inicio: ${esc(cfgLabel(r.cfg.start,r.cfg,r.stops,false))} · Fin: ${esc(cfgLabel(r.cfg.end,r.cfg,r.stops,true))}`:''}</div>
+      ${routeThumbHtml(rr)}
+      ${progressHtml(pr)}
       <div class="si-path">${path}</div>
       <div class="si-btns">
-        <button style="background:var(--gray-100);color:var(--navy);" onclick="viewSavedRoute('${r.id}')">👁 Consultar</button>
-        <button style="background:var(--navy);color:#fff;" onclick="useSavedRoute('${r.id}')">▶ Usar hoy</button>
+        ${cur?'':`<button style="background:var(--navy);color:#fff;" onclick="openRoute('${r.id}')">▶ Abrir</button>`}
+        <button style="background:var(--gray-100);color:var(--navy);" onclick="viewSavedRoute('${r.id}')">👁 Ver</button>
+        <button style="background:var(--gray-100);color:var(--navy);" onclick="useSavedRoute('${r.id}')">📋 Copiar</button>
         <button style="background:var(--danger-bg);color:var(--danger);flex:0 0 40px;" onclick="deleteSavedRoute('${r.id}')">🗑</button>
       </div></div>`;}).join('');
   document.getElementById('saved-modal').classList.add('open');
@@ -1462,35 +1591,46 @@ function viewSavedRoute(id){
   renderStops();renderRouteMap();
 }
 function closeViewRoute(){viewingRoute=null;renderStops();renderRouteMap();}
+// Abrir: cambia a esa ruta y sigue editándola (misma ruta)
+function openRoute(id){
+  const r=savedRoutes.find(x=>x.id===id);if(!r)return;
+  if(currentRouteId!==id&&(routeStops.length||savedRoutes.find(x=>x.id===currentRouteId)))saveRouteToHistory(true,true);
+  routeStops=refreshStopsFromBiz(JSON.parse(JSON.stringify(r.stops)));
+  routeCfg={start:r.cfg.start,end:r.cfg.end,confirmed:!!r.stops.length};
+  currentRouteId=id;curRouteMeta={name:r.name||'',date:r.date||todayStr()};
+  viewingRoute=null;persistCurMeta();
+  document.getElementById('saved-modal').classList.remove('open');
+  document.getElementById('route-panel').classList.remove('collapsed');
+  saveRoute();renderStops();renderRouteMap();
+  showToast(`▶ Abierta: ${routeName(r)}`);
+}
+// Copiar: crea una ruta nueva con las mismas paradas (para repetirla otro día)
 function useSavedRoute(id){
   const r=savedRoutes.find(x=>x.id===id);if(!r)return;
-  if(routeStops.length&&currentRouteId!==id){
-    if(!confirm('Tu ruta actual se reemplazará (queda guardada en 📂 Rutas). ¿Continuar?'))return;
-    saveRouteToHistory(true);
-  }
-  // copia las paradas con los datos más recientes de cada negocio
-  routeStops=r.stops.map(s=>{const c={...s,id:Date.now().toString()+Math.random().toString(36).slice(2,6)};
-    const v=s.visitId&&visits.find(x=>x.id===s.visitId);const b=v&&bizOfVisit(v);
-    if(b){c.visitId=b.last.id;c.name=b.last.name;c.address=[b.last.address,b.last.city].filter(Boolean).join(', ')||c.address;if(b.lat){c.lat=b.lat;c.lng=b.lng;}c.nextTime=b.last.nextDate===todayStr()?(b.last.nextTime||''):'';}
-    c._old=s.id;return c;});
+  const name=askRouteName(`${routeName(r)} · ${shortDate(todayStr())}`);if(name===null)return;
+  if(routeStops.length||savedRoutes.find(x=>x.id===currentRouteId))saveRouteToHistory(true,true);
+  routeStops=refreshStopsFromBiz(r.stops.map(s=>({...s,_old:s.id,id:Date.now().toString()+Math.random().toString(36).slice(2,6)})));
   const map={};routeStops.forEach(c=>{map[c._old]=c.id;delete c._old;});
   routeCfg={start:map[r.cfg.start]||'gps',end:map[r.cfg.end]||(r.cfg.end==='gps'?'gps':'free'),confirmed:false};
-  currentRouteId=null;localStorage.removeItem('mb_cur_route_id');viewingRoute=null;
+  currentRouteId=Date.now().toString();curRouteMeta={name,date:todayStr()};viewingRoute=null;
   document.getElementById('saved-modal').classList.remove('open');
-  saveRoute();renderStops();renderRouteMap();
-  showToast('▶ Ruta cargada — elige dónde empiezas');
+  saveRoute();saveRouteToHistory(true,true);renderStops();renderRouteMap();
+  showToast('📋 Ruta copiada — elige dónde empiezas');
   setTimeout(openPlanner,450);
 }
 function renameSavedRoute(id){
   const r=savedRoutes.find(x=>x.id===id);if(!r)return;
-  const n=prompt('Nombre para esta ruta (ej. "Ruta Dayton"):',r.name||'');if(n===null)return;
-  r.name=n.trim();persistSaved();openSavedRoutes();
+  const n=askRouteName(r.name);if(n===null)return;
+  r.name=n;persistSaved();
+  if(id===currentRouteId){curRouteMeta.name=n;persistCurMeta();renderRouteTitle();}
+  openSavedRoutes();
 }
 function deleteSavedRoute(id){
-  if(!confirm('¿Borrar esta ruta del historial?'))return;
-  savedRoutes=savedRoutes.filter(r=>r.id!==id);
+  const r=savedRoutes.find(x=>x.id===id);if(!r)return;
+  if(!confirm(`¿Borrar la ruta "${routeName(r)}"?`))return;
+  savedRoutes=savedRoutes.filter(x=>x.id!==id);
   if(viewingRoute&&viewingRoute.id===id)closeViewRoute();
-  if(currentRouteId===id){currentRouteId=null;localStorage.removeItem('mb_cur_route_id');}
+  if(currentRouteId===id){currentRouteId=null;curRouteMeta={name:'',date:todayStr()};routeStops=[];routeCfg={start:'gps',end:'free',confirmed:false};persistCurMeta();saveRoute();renderStops();renderRouteMap();}
   persistSaved();openSavedRoutes();
 }
 
@@ -1686,7 +1826,7 @@ function updatePendingBanner(){
 let period=null;
 function ymOf(d){return d.slice(0,7);}
 function monthBounds(ym){const[y,m]=ym.split('-').map(Number);const last=new Date(y,m,0).getDate();return{from:`${ym}-01`,to:`${ym}-${pad2(last)}`,last};}
-function monthName(ym){const[y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('es',{month:'long',year:'numeric'});}
+function monthName(ym){const[y,m]=ym.split('-').map(Number);const t=new Date(y,m-1,1).toLocaleDateString('es',{month:'long',year:'numeric'});return t.charAt(0).toUpperCase()+t.slice(1);}
 function shortDate(d){const[y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString('es',{day:'numeric',month:'short'});}
 function prevYm(ym){const[y,m]=ym.split('-').map(Number);const d=new Date(y,m-2,1);return`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;}
 function setPeriod(kind,from,to,label){
